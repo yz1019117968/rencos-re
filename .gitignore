@@ -6,3 +6,5 @@
 .idea
 *.iml
 samples/
+test.py
+__pycache__/

@@ -6,15 +6,14 @@
 
 """
 Usage:
-    vocab.py --train-set-src=<file> --train-set-tgt=<file> [options] VOCAB_FILE
+  vocab.py [options] TRAIN_SET_SRC TRAIN_SET_TGT VOCAB_FILE
+
 Options:
     -h --help                  Show this screen.
-    --train-set-src=<file>     Train set file (src)
-    --train-set-tgt=<file>     Train set file (tgt)
-    --size-src=<int>           src vocab size [default: 50000]
-    --size-tgt=<int>           tgt vocab size [default: 50000]
-    --freq-cutoff=<int>        frequency cutoff [default: 2]
-    --vocab-class=<str>        the class name of used Vocab class [default: Vocab]
+    --size-src INT             src vocab size [default: 50000]
+    --size-tgt INT             tgt vocab size [default: 50000]
+    --freq-cutoff INT          frequency cutoff [default: 2]
+    --vocab-class STR          the class name of used Vocab class [default: Vocab]
 """
 
 import os
@@ -187,19 +186,25 @@ class Vocab(object):
 
 if __name__ == "__main__":
     args = docopt(__doc__)
-    print(args)
     from dataset import Dataset
 
-    print("Loading train set src: " + args['--train-set-src'])
-    print("Loading train set tgt: " + args['--train-set-tgt'])
-    train_set = Dataset.create_from_file(args['--train-set-src'], args['--train-set-tgt'], None, None)
-    print(train_set[0:5])
-    # vocab_class = globals()[args['--vocab-class']]
-    # vocab = vocab_class.build(train_set, int(args['--size-src']), int(args['--size-tgt']), int(args['--freq-cutoff']), int(args['--freq-cutoff']))
-    # print('generated vocabulary, {}'.format(vocab))
-    #
-    # vocab.save(args['VOCAB_FILE'])
-    # print('vocabulary saved to %s' % args['VOCAB_FILE'])
+    print("Loading train set src: " + args['TRAIN_SET_SRC'])
+    print("Loading train set tgt: " + args['TRAIN_SET_TGT'])
+    train_set = Dataset.create_from_file(args['TRAIN_SET_SRC'], args['TRAIN_SET_TGT'], None, None)
+
+    # ############# show the first five dataset samples ##############################################
+    # for idx, sample in enumerate(train_set):
+    #     print("src_tokens: ", sample.src_tokens)
+    #     print("tgt_tokens: ", sample.tgt_tokens)
+    #     if idx == 4:
+    #         break
+
+    vocab_class = globals()[args['--vocab-class']]
+    vocab = vocab_class.build(train_set, int(args['--size-src']), int(args['--size-tgt']), int(args['--freq-cutoff']), int(args['--freq-cutoff']))
+    print('generated vocabulary, {}'.format(vocab))
+
+    vocab.save(args['VOCAB_FILE'])
+    print('vocabulary saved to %s' % args['VOCAB_FILE'])
 
 
 

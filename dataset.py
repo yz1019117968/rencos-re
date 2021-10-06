@@ -143,13 +143,17 @@ class Dataset(object):
         with open(src_file_path, 'r', encoding="utf-8") as f:
             for line in f.readlines():
                 if src_max_len is not None:
-                    src_tokens = line.strip().split(" ")[: src_max_len]
+                    src_tokens = line.strip().split()[: src_max_len]
+                else:
+                    src_tokens = line.strip().split()
                 src_entries.append(src_tokens)
         tgt_entries = []
         with open(tgt_file_path, 'r', encoding="utf-8") as f:
             for line in f.readlines():
                 if tgt_max_len is not None:
-                    tgt_tokens = line.strip().split(" ")[: tgt_max_len]
+                    tgt_tokens = line.strip().split()[: tgt_max_len]
+                else:
+                    tgt_tokens = line.strip().split()
                 tgt_entries.append(tgt_tokens)
         examples = []
         for idx, (src, tgt) in enumerate(zip(src_entries, tgt_entries)):
@@ -165,16 +169,16 @@ class Dataset(object):
 
     def get_src_tokens(self):
         for e in self.examples:
-            yield e.src_tokens()
+            yield e.src_tokens
 
     def get_tgt_tokens(self):
         for e in self.examples:
-            yield e.tgt_tokens()
+            yield e.tgt_tokens
 
     def get_ground_truth(self) -> Iterable[List[str]]:
         for e in self.examples:
             # remove the <s> and </s>
-            yield e.get_tgt_desc_tokens()
+            yield e.get_tgt_desc_tokens
 
     def _batch_iter(self, batch_size: int, shuffle: bool, sort_by_length: bool) -> Batch:
         batch_num = math.ceil(len(self) / batch_size)

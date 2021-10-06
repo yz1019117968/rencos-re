@@ -1,5 +1,3 @@
-python ../vocab.py --train-set-src ../samples/python/train/train.spl.src ^
-         --train-set-tgt ../samples/python/train/train.txt.tgt ^
-         --size-src 50000 --size-tgt 50000 ^
-         --freq-cutoff 2 --vocab-class Vocab ^
+python ../vocab.py ../samples/python/train/train.spl.src ^
+         ../samples/python/train/train.txt.tgt ^
          ../samples/python/dic/python_dic.json
