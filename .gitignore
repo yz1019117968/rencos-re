@@ -8,3 +8,4 @@
 samples/
 test.py
 __pycache__/
+scripts/log/
