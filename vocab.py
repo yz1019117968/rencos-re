@@ -16,16 +16,14 @@ Options:
     --vocab-class STR          the class name of used Vocab class [default: Vocab]
 """
 
-import os
-import pickle
 from abc import ABC, abstractmethod
-from typing import Iterable, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union
 from collections import Counter
 from itertools import chain
 from docopt import docopt
 import json
-from utils.common import *
-from tqdm import tqdm
+from modules.utils.common import *
+
 if TYPE_CHECKING:
     from dataset import Dataset
 
@@ -170,8 +168,8 @@ class Vocab(object):
     def save(self, file_path: str):
         assert file_path.endswith(".json")
         with open(file_path, 'w') as f:
-            json.dump(dict(code_word2id=self.src_vocab.word2id,
-                           nl_word2id=self.tgt_vocab.word2id), f, indent=2)
+            json.dump(dict(src_word2id=self.src_vocab.word2id,
+                           tgt_word2id=self.tgt_vocab.word2id), f, indent=2)
 
     @staticmethod
     def load(file_path):

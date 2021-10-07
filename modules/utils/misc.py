@@ -7,7 +7,7 @@
 # -*- coding: utf-8 -*-
 
 import torch
-
+from torch import Tensor
 
 def aeq(*args):
     """
@@ -59,3 +59,16 @@ def use_gpu(opt):
     """
     return (hasattr(opt, 'gpu_ranks') and len(opt.gpu_ranks) > 0) or \
         (hasattr(opt, 'gpu') and opt.gpu > -1)
+
+def negative_log_likelihood(logits: torch.FloatTensor, gold_tensor: torch.LongTensor,
+                            words_mask: torch.FloatTensor) -> Tensor:
+    """
+    :param logits: ( batch_size, tgt_vocab_size), log_softmax
+    :param gold_tensor: ([tgt_src_len - 1, x], batch_size)
+    :param words_mask: ([tgt_src_len - 1, x], batch_size), a matrix to mask target words, 1.0 for non-pad
+                       NOTE: this mask is different from dot-production mask
+    :return: losses: ([tgt_src_len - 1, x], batch_size)
+    """
+    # (sent_len, batch_size)
+    gold_words_log_prob = torch.gather(logits, index=gold_tensor.unsqueeze(-1), dim=-1).squeeze(-1) * words_mask
+    return -gold_words_log_prob

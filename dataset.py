@@ -5,11 +5,10 @@
 # created at:30/9/2021 1:44 PM
 
 import math
-import json
 from abc import ABC, abstractmethod
 from torch import Tensor
-from typing import Iterable, Tuple, Callable
-from utils.common import *
+from typing import Callable
+from modules.utils.common import *
 import logging
 from vocab import VocabEntry
 
@@ -45,9 +44,17 @@ class Example(AbstractExample):
     @property
     def tgt_tokens(self):
         """
-        used for models
+        for creating vocab
         """
         return [TGT_START] + self._tgt_tokens + [TGT_END]
+
+    @property
+    def tgt_in_tokens(self):
+        return [TGT_START] + self._tgt_tokens
+
+    @property
+    def tgt_out_tokens(self):
+        return self._tgt_tokens + [TGT_END]
 
     @property
     def get_tgt_desc_tokens(self):
@@ -142,18 +149,16 @@ class Dataset(object):
         src_entries = []
         with open(src_file_path, 'r', encoding="utf-8") as f:
             for line in f.readlines():
-                if src_max_len is not None:
-                    src_tokens = line.strip().split()[: src_max_len]
-                else:
-                    src_tokens = line.strip().split()
+                src_tokens = line.strip().split()
+                if src_max_len is not None and int(src_max_len) < len(src_tokens):
+                    src_tokens = line.strip().split()[: int(src_max_len)]
                 src_entries.append(src_tokens)
         tgt_entries = []
         with open(tgt_file_path, 'r', encoding="utf-8") as f:
             for line in f.readlines():
-                if tgt_max_len is not None:
-                    tgt_tokens = line.strip().split()[: tgt_max_len]
-                else:
-                    tgt_tokens = line.strip().split()
+                tgt_tokens = line.strip().split()
+                if tgt_max_len is not None and int(tgt_max_len) < len(tgt_tokens):
+                    tgt_tokens = line.strip().split()[: int(tgt_max_len)]
                 tgt_entries.append(tgt_tokens)
         examples = []
         for idx, (src, tgt) in enumerate(zip(src_entries, tgt_entries)):

@@ -48,7 +48,11 @@ class Encoder(BaseEncoder):
         """
         # (batch_size, sent_len, embed_size) -> (sent_len, batch_size, embed_size)
         # tell diff about view and permute
-        embeddings = self.embed_layer(src_tensor).permute(1, 0, 2)
+
+        embeddings = self.embed_layer(src_tensor.permute(1, 0))
+        print("embeddings: ", embeddings.shape)
+        embeddings = embeddings.permute(1, 0, 2)
+        print("embeddings: ", embeddings.shape)
         encodings, (last_state, last_cell) = self.rnn_layer(embeddings, src_lens, enforce_sorted=False)
         # ???
         # encodings, last_state, last_cell = permute_lstm_output(encodings, temp_last_state, temp_last_cell)
@@ -56,7 +60,7 @@ class Encoder(BaseEncoder):
 
 if __name__ == "__main__":
     embed_layer = nn.Embedding(10, 3)
-    encoder = Encoder(3, 5, embed_layer, 0.5)
+    encoder = Encoder(3, 5, embed_layer, 1, 0.5)
     src_tensor = torch.tensor([[1,2,3,4], [2,3,4,0]])
     src_lens = [4, 3]
-    encoder(src_tensor, src_lens)
+    print(encoder(src_tensor, src_lens))

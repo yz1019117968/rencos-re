@@ -7,43 +7,37 @@
 # encoding=utf-8
 
 """
-Training procedure
 Usage:
-    train.py --train-data=<file> --dev-data=<file> --vocab=<file> [options]
+  train.py [options] TRAIN_SET_SRC TRAIN_SET_TGT VALID_SET_SRC VALID_SET_TGT VOCAB_FILE
+
 Options:
-    -h --help                   show this screen.
-    --cuda                      use GPU
-    --train-data-src=<file>     training set file (src)
-    --train-data-tgt=<file>     training set file (tgt)
-    --dev-data-src=<file>       development set file (src)
-    --dev-data-tgt=<file>       development set file (tgt)
-    --src_max_len=<int>         max length of src
-    --tgt_max_len=<int>         max length of tgt
-    --vocab-src=<file>          vocab file (src)
-    --vocab-tgt=<file>          vocab file (tgt)
-    --model-class=<str>         model class [default: models.updater.CoAttnBPBAUpdater]
-    --embed-size=<int>          embed size [default: 300]
-    --enc-hidden-size=<int>     encoder hidden size [default: 256]
-    --dec-hidden-size=<int>     hidden size [default: 512]
-    --input-feed                use input feeding
-    --share-embed               share the embeddings of src_encoder and editor
-    --seed=<int>                random seed [default: 0]
-    --uniform-init=<float>      uniform initialization of parameters [default: 0.1]
-    --train-batch-size=<int>    train batch size [default: 32]
-    --valid-batch-size=<int>    valid batch size [default: 32]
-    --lr=<float>                learning rate [default: 0.001]
-    --dropout=<float>           dropout rate [default: 0.0]
-    --teacher-forcing=<float>   teacher forcing ratio [default: 1.0]
-    --clip-grad=<float>         gradient clipping [default: 5.0]
-    --log-every=<int>           log interval [default: 100]
-    --valid-niter=<int>         validate interval [default: 500]
-    --patience=<int>            wait for how many validations to decay learning rate [default: 5]
-    --max-trial-num=<int>       terminal training after how many trials [default: 5]
-    --lr-decay=<float>          learning rate decay [default: 0.5]
-    --max-epoch=<int>           max epoch [default: 50]
-    --log-dir=<dir>             dir for tensorboard log [default: log/]
-    --save-to=<file>            model save path [default: model.bin]
-    --example-class=<str>       Example Class used to load an example [default: dataset.Example]
+    -h --help                 show this screen.
+    --cuda INT                use GPU [default: 0]
+    --src-max-len INT         max length of src [default: 100]
+    --tgt-max-len INT         max length of tgt [default: 50]
+    --model-class STR         model class [default: modules.Seq2Seq.Seq2Seq]
+    --embed-size INT          embed size [default: 256]
+    --enc-hidden-size INT     encoder hidden size [default: 512]
+    --dec-hidden-size INT     hidden size [default: 512]
+    --num-layers INT          number of layers [default: 1]
+    --input-feed BOOL         use input feeding [default: False]
+    --seed INT                random seed [default: 0]
+    --uniform-init FLOAT      uniform initialization of parameters [default: 0.1]
+    --train-batch-size INT    train batch size [default: 32]
+    --valid-batch-size INT    valid batch size [default: 32]
+    --lr FLOAT                learning rate [default: 0.001]
+    --dropout-rate FLOAT      dropout rate [default: 0.5]
+    --teacher-forcing FLOAT   teacher forcing ratio [default: 1.0]
+    --clip-grad FLOAT         gradient clipping [default: 5.0]
+    --log-every INT           log interval [default: 100]
+    --valid-niter INT         validate interval [default: 500]
+    --patience INT            wait for how many validations to decay learning rate [default: 5]
+    --max-trial-num INT       terminal training after how many trials [default: 5]
+    --lr-decay FLOAT          learning rate decay [default: 0.5]
+    --max-epoch INT           max epoch [default: 50]
+    --log-dir DIR             dir for tensorboard log [default: log/]
+    --save-to FILE            model save path [default: model.bin]
+    --example-class STR       Example Class used to load an example [default: dataset.Example]
 """
 
 # Reference: https://github.com/pcyin/pytorch_basic_nmt
@@ -62,7 +56,7 @@ import time
 from abc import ABC, abstractmethod
 from docopt import docopt
 import logging
-from utils.common import *
+from modules.utils.common import *
 import tensorflow as tf
 from dataset import Dataset, Batch
 
@@ -317,11 +311,11 @@ class Trainer(Procedure):
     def load_dataset(self):
         logging.info("Load example using {}".format(self._args['--example-class']))
         example_class = get_attr_by_name(self._args['--example-class'])
-        train_set = Dataset.create_from_file(self._args['--train-data-src'], self._args['--train-data-tgt'],
-                                             self._args['--src_max_len'], self._args['--tgt-max-len'], example_class)
-        dev_set = Dataset.create_from_file(self._args['--dev-data-src'], self._args['--dev-data-tgt'],
-                                           self._args['--src_max_len'], self._args['--tgt-max-len'], example_class)
-        return train_set, dev_set
+        train_set = Dataset.create_from_file(self._args['TRAIN_SET_SRC'], self._args['TRAIN_SET_TGT'],
+                                             self._args['--src-max-len'], self._args['--tgt-max-len'], example_class)
+        val_set = Dataset.create_from_file(self._args['VALID_SET_SRC'], self._args['VALID_SET_TGT'],
+                                           self._args['--src-max-len'], self._args['--tgt-max-len'], example_class)
+        return train_set, val_set
 
     def train(self):
         train_set, dev_set = self.load_dataset()
@@ -375,8 +369,10 @@ def train(args):
     logging.debug("Train with args:")
     logging.info(args)
 
-    seed = int(args['--seed'])
-    set_reproducibility(seed)
+    # set reproducibility
+    if args['--seed'] is not None:
+        seed = int(args['--seed'])
+        set_reproducibility(seed)
 
     trainer = Trainer(args)
     trainer.train()
@@ -384,6 +380,7 @@ def train(args):
 
 def main():
     args = docopt(__doc__)
+    print(args)
     train(args)
 
 

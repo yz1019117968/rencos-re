@@ -9,13 +9,13 @@ from typing import Any, Union, Callable, Tuple
 
 from torch import DoubleTensor
 from torch.nn import functional as F
-from utils.common import *
+from modules.utils.common import *
 from dataset import Example
-from models.beam import Hypothesis
+from modules.beam import Hypothesis
 from modules.base import LSTMCell, Linear
 from vocab import VocabEntry, BaseVocabEntry
 from modules.GlobalAttention import GlobalAttention
-from .utils import negative_log_likelihood
+from modules.utils.misc import negative_log_likelihood
 from torch import nn, Tensor
 
 class AbstractDecoder(nn.Module, ABC):
