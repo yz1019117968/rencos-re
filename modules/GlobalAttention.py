@@ -76,7 +76,6 @@ class GlobalAttention(nn.Module):
     def __init__(self, dim, coverage=False, attn_type="dot",
                  attn_func="softmax"):
         super(GlobalAttention, self).__init__()
-
         self.dim = dim
         assert attn_type in ["dot", "general", "mlp"], (
             "Please select a valid attention type.")
@@ -186,7 +185,7 @@ class GlobalAttention(nn.Module):
         if memory_lengths is not None:
             mask = sequence_mask(memory_lengths, max_len=align.size(-1))
             mask = mask.unsqueeze(1)  # Make it broadcastable.
-            align.masked_fill_(1 - mask, -float('inf'))
+            align.masked_fill_(~mask, -float('inf'))
 
         # Softmax or sparsemax to normalize attention weights
         if self.attn_func == "softmax":

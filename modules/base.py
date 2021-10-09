@@ -60,7 +60,7 @@ class LSTM(nn.Module):
         if dropout > 0.0:
             self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, x: Tensor, x_lens: List[int], enforce_sorted: bool = True) \
+    def forward(self, x: Tensor, x_lens: List[int], init_states: Tuple[Tensor, Tensor] = None, enforce_sorted: bool = True) \
             -> Tuple[Tensor, Tuple[Tensor, Tensor]]:
         packed_input = pack_padded_sequence(x, x_lens, batch_first=self.rnn.batch_first, enforce_sorted=enforce_sorted)
         encodings, (last_state, last_cell) = self.rnn(packed_input)
@@ -101,10 +101,11 @@ class Linear(nn.Module):
 
 def permute_lstm_output(encodings: torch.Tensor, last_state: torch.Tensor, last_cell: torch.Tensor):
     # (batch_size, sent_len, hidden_size)
+    # output.view(seq_len, batch, num_directions, hidden_size)
     encodings = encodings.permute(1, 0, 2)
     # (batch_size, hidden_size * directions * #layers
-    last_state = torch.cat([s.squeeze(0) for s in last_state.split(1, dim=0)], dim=-1)
-    last_cell = torch.cat([c.squeeze(0) for c in last_cell.split(1, dim=0)], dim=-1)
+    last_state = last_state.sum(0).unsqueeze(0)
+    last_cell = last_cell.sum(0).unsqueeze(0)
     return encodings, last_state, last_cell
 
 if __name__ == "__main__":

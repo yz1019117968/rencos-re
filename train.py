@@ -20,7 +20,7 @@ Options:
     --enc-hidden-size INT     encoder hidden size [default: 512]
     --dec-hidden-size INT     hidden size [default: 512]
     --num-layers INT          number of layers [default: 1]
-    --input-feed BOOL         use input feeding [default: False]
+    --input-feed BOOL         use input feeding [default: true]
     --attn-type STR           choose an attention type, e.g., dot, general, and mlp. [default: mlp]
     --attn-func STR           choose an attention function, e.g., softmax and sparsemax. [default: softmax]
     --seed INT                random seed [default: 0]

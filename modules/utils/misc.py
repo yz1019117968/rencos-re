@@ -72,3 +72,7 @@ def negative_log_likelihood(logits: torch.FloatTensor, gold_tensor: torch.LongTe
     # (sent_len, batch_size)
     gold_words_log_prob = torch.gather(logits, index=gold_tensor.unsqueeze(-1), dim=-1).squeeze(-1) * words_mask
     return -gold_words_log_prob
+
+if __name__ == "__main__":
+    a = torch.tensor([5, 4, 3, 6], dtype=torch.long)
+    print(sequence_mask(a).type_as(a))

@@ -37,7 +37,7 @@ class Seq2Seq(base.BaseModel, ABC):
         super(Seq2Seq, self).__init__()
         self.init_embeddings(vocab, embed_size)
         self.encoder = Encoder(embed_size, enc_hidden_size, self.enc_embed_layer, num_layers, dropout_rate)
-        self.decoder = Decoder(embed_size, dec_hidden_size, self.tgt_vocab, self.dec_embed_layer, dropout_rate, args, loss_func)
+        self.decoder = Decoder(embed_size, dec_hidden_size, self.tgt_vocab, self.dec_embed_layer, num_layers, dropout_rate, args, loss_func)
 
     def init_embeddings(self, vocab: 'Vocab', embed_size):
         self.src_vocab = vocab.src_vocab

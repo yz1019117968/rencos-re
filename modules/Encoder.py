@@ -52,8 +52,11 @@ class Encoder(BaseEncoder):
         embeddings = self.embed_layer(src_tensor.permute(1, 0))
         embeddings = embeddings.permute(1, 0, 2)
         encodings, (last_state, last_cell) = self.rnn_layer(embeddings, src_lens, enforce_sorted=False)
-        # ???
-        # encodings, last_state, last_cell = permute_lstm_output(encodings, temp_last_state, temp_last_cell)
+
+        encodings = encodings.view(encodings.size(0), encodings.size(1), 2, self.hidden_size)
+        encodings = encodings.sum(2).permute(1, 0, 2)
+        last_state = last_state.sum(0).unsqueeze(0)
+        last_cell = last_cell.sum(0).unsqueeze(0)
         return encodings, last_state, last_cell
 
 if __name__ == "__main__":
