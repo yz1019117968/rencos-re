@@ -50,9 +50,7 @@ class Encoder(BaseEncoder):
         # tell diff about view and permute
 
         embeddings = self.embed_layer(src_tensor.permute(1, 0))
-        print("embeddings: ", embeddings.shape)
         embeddings = embeddings.permute(1, 0, 2)
-        print("embeddings: ", embeddings.shape)
         encodings, (last_state, last_cell) = self.rnn_layer(embeddings, src_lens, enforce_sorted=False)
         # ???
         # encodings, last_state, last_cell = permute_lstm_output(encodings, temp_last_state, temp_last_cell)

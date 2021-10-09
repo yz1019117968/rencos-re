@@ -101,6 +101,7 @@ class Example(AbstractExample):
 #         return [TGT_START] + self._tgt_tokens + [TGT_END]
 
 class Batch(object):
+
     def __init__(self, examples: List[Example]):
         self.examples = examples
 
@@ -118,9 +119,29 @@ class Batch(object):
     def src_tokens(self):
         return [e.src_tokens for e in self.examples]
 
+    def get_src_lens(self):
+        return [len(sent) for sent in self.src_tokens]
+
     @property
     def tgt_tokens(self):
         return [e.tgt_tokens for e in self.examples]
+
+    def get_tgt_lens(self):
+        return [len(sent) for sent in self.tgt_tokens]
+
+    @property
+    def tgt_in_tokens(self):
+        return [e.tgt_in_tokens for e in self.examples]
+
+    def get_tgt_in_lens(self):
+        return [len(sent) for sent in self.tgt_in_tokens]
+
+    @property
+    def tgt_out_tokens(self):
+        return [e.tgt_out_tokens for e in self.examples]
+
+    def get_tgt_out_lens(self):
+        return [len(sent) for sent in self.tgt_out_tokens]
 
     def get_src_tensor(self, vocab: VocabEntry, device: torch.device):
         return vocab.to_input_tensor(self.src_tokens, device)
@@ -128,12 +149,11 @@ class Batch(object):
     def get_tgt_tensor(self, vocab: VocabEntry, device: torch.device) -> Tensor:
         return vocab.to_input_tensor(self.tgt_tokens, device)
 
-    def get_src_lens(self):
-        return [len(sent) for sent in self.src_tokens]
+    def get_tgt_in_tensor(self, vocab: VocabEntry, device: torch.device):
+        return vocab.to_input_tensor(self.tgt_in_tokens, device)
 
-    def get_tgt_lens(self):
-        return [len(sent) for sent in self.tgt_tokens]
-
+    def get_tgt_out_tensor(self, vocab: VocabEntry, device: torch.device):
+        return vocab.to_input_tensor(self.tgt_out_tokens, device)
 
 class Dataset(object):
     def __init__(self, examples: List[Example]):

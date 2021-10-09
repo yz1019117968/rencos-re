@@ -21,6 +21,8 @@ Options:
     --dec-hidden-size INT     hidden size [default: 512]
     --num-layers INT          number of layers [default: 1]
     --input-feed BOOL         use input feeding [default: False]
+    --attn-type STR           choose an attention type, e.g., dot, general, and mlp. [default: mlp]
+    --attn-func STR           choose an attention function, e.g., softmax and sparsemax. [default: softmax]
     --seed INT                random seed [default: 0]
     --uniform-init FLOAT      uniform initialization of parameters [default: 0.1]
     --train-batch-size INT    train batch size [default: 32]

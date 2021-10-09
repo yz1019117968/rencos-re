@@ -14,6 +14,7 @@ from dataset import Batch
 from vocab import Vocab
 from modules.Decoder import *
 from modules.Encoder import Encoder
+from modules.Decoder import Decoder
 from modules.utils.misc import negative_log_likelihood
 
 logging.basicConfig(level=logging.INFO)
@@ -36,8 +37,7 @@ class Seq2Seq(base.BaseModel, ABC):
         super(Seq2Seq, self).__init__()
         self.init_embeddings(vocab, embed_size)
         self.encoder = Encoder(embed_size, enc_hidden_size, self.enc_embed_layer, num_layers, dropout_rate)
-        self.dec_state_init = None
-        self.decoder = None
+        self.decoder = Decoder(embed_size, dec_hidden_size, self.tgt_vocab, self.dec_embed_layer, dropout_rate, args, loss_func)
 
     def init_embeddings(self, vocab: 'Vocab', embed_size):
         self.src_vocab = vocab.src_vocab
@@ -61,42 +61,16 @@ class Seq2Seq(base.BaseModel, ABC):
         dec_init_state = torch.tanh(dec_init_cell)
         return dec_init_state, dec_init_cell
 
-    def _get_sent_masks(self, max_len: int, sent_lens: List[int]):
-        src_sent_masks = torch.zeros(len(sent_lens), max_len, dtype=FLOAT_TYPE)
-        for e_id, l in enumerate(sent_lens):
-            # make all paddings to 1
-            src_sent_masks[e_id, l:] = 1
-        return src_sent_masks.to(self.device)
-
-    def construct_src_input(self, batch):
+    def forward(self, batch: Batch) -> Tensor:
         src_tensor = batch.get_src_tensor(self.src_vocab, self.device)
         src_lens = batch.get_src_lens()
-        return src_tensor, src_lens
-
-    @property
-    def encoder_output_names(self):
-        return ["edit_encodings", "edit_last_state", "edit_sent_masks", "src_encodings", "src_sent_masks",
-                "dec_init_state"]
-
-    def prepare_tgt_out_tensor(self, batch: Batch) -> Tensor:
-        return batch.get_tgt_out_tensor(self.nl_vocab, self.device)
-
-    def prepare_decoder_kwargs(self, encoder_output: dict, batch: Batch) -> dict:
-        pass
-
-    def forward(self, batch: Batch) -> Tensor:
-        input_tensor = self.construct_src_input(batch)
-        encoder_output = self.encoder(*input_tensor)
-        print(encoder_output)
-        assert False, "stop"
-        tgt_in_tensor = batch.get_tgt_in_tensor(self.nl_vocab, self.device)
-        tgt_out_tensor = self.prepare_tgt_out_tensor(batch)
-
-
-        decoder_kwargs = self.prepare_decoder_kwargs(encoder_output, batch)
+        src_encodings, src_last_state, src_last_cell = self.encoder(src_tensor, src_lens)
         # omit the last word of tgt, which is </s>
-        # (tgt_sent_len - 1, batch_size, hidden_size)
-        word_losses, ys = self.nl_decoder(tgt_in_tensor, tgt_out_tensor, **decoder_kwargs)
+        tgt_in_tensor = batch.get_tgt_in_tensor(self.tgt_vocab, self.device)
+        # omit the first word of tgt, which is <s>
+        tgt_out_tensor = batch.get_tgt_out_tensor(self.tgt_vocab, self.device)
+
+        word_losses, ys = self.decoder(tgt_in_tensor, tgt_out_tensor, src_encodings, src_lens, src_last_state, src_last_cell)
 
         # (batch_size,)
         example_losses = word_losses.sum(dim=0)
@@ -115,3 +89,10 @@ class Seq2Seq(base.BaseModel, ABC):
         decoder_kwargs = self.prepare_decoder_kwargs(encoder_output, batch)
         hypos = self.nl_decoder.beam_search(example, beam_size, max_dec_step, BeamClass, **decoder_kwargs)
         return hypos
+
+    def _get_sent_masks(self, max_len: int, sent_lens: List[int]):
+        src_sent_masks = torch.zeros(len(sent_lens), max_len, dtype=FLOAT_TYPE)
+        for e_id, l in enumerate(sent_lens):
+            # make all paddings to 1
+            src_sent_masks[e_id, l:] = 1
+        return src_sent_masks.to(self.device)

@@ -34,22 +34,6 @@ class AbstractDecoder(nn.Module, ABC):
         pass
 
     @abstractmethod
-    def _init_loop(self, **forward_args) -> Tuple:
-        """
-        :param forward_args:
-        :return: static_input
-        """
-        pass
-
-    @abstractmethod
-    def _init_step(self, **forward_args) -> Tuple:
-        """
-        :param forward_args:
-        :return: state_tm1
-        """
-        pass
-
-    @abstractmethod
     def step(self, y_tm1_embed: Tensor, static_input: Any, state_tm1: Tuple) -> Tuple[Tuple, Tuple[Tensor]]:
         """
         :param y_tm1_embed:
@@ -60,21 +44,18 @@ class AbstractDecoder(nn.Module, ABC):
         """
         pass
 
-    @abstractmethod
-    def get_decode_vocab(self, example: Example) -> BaseVocabEntry:
-        return self.vocab
 
-
-class BaseDecoder(AbstractDecoder, ABC):
+class Decoder(AbstractDecoder, ABC):
 
     def __init__(self, embed_size: int, hidden_size: int, vocab: VocabEntry,
-                 embed_layer: nn.Module, args: dict,
-                 att_type: str, attn_func: str,
+                 embed_layer: nn.Module, dropout_rate: float, args: dict,
                  loss_func: Callable = negative_log_likelihood):
-        super(BaseDecoder, self).__init__()
+        super(Decoder, self).__init__()
         self.input_feed = bool(args['--input-feed'])
-        self.dropout_rate = float(args['--dropout'])
+        self.attn_type = str(args['--attn-type'])
+        self.attn_func = str(args['--attn-func'])
         self.teacher_forcing_ratio = float(args['--teacher-forcing'])
+        self.dropout_rate = dropout_rate
         self.embed_size = embed_size
         self.hidden_size = hidden_size
         self.vocab = vocab
@@ -84,11 +65,12 @@ class BaseDecoder(AbstractDecoder, ABC):
             input_size = embed_size + hidden_size
         else:
             input_size = embed_size
-        self.attention = GlobalAttention(self.hidden_size, False, "mlp", "softmax")
+        self.attention = GlobalAttention(self.hidden_size, False, self.attn_type, self.attn_func)
         self.rnn_cell = LSTMCell(input_size, hidden_size, dropout=self.dropout_rate)
         # y.size+s_size+c_size
         self.generator_function = Linear(embed_size+hidden_size+hidden_size, hidden_size)
         self.tanh = nn.Tanh()
+
     @property
     def device(self):
         return self.embed_layer.weight.device
@@ -123,9 +105,6 @@ class BaseDecoder(AbstractDecoder, ABC):
         word_losses = self.loss_func(words_log_prob, target_tensor, words_mask)
         return word_losses
 
-    def _init_loop(self, **forward_args):
-        return forward_args['src_encodings'], forward_args['src_sent_masks']
-
     def _init_step(self, **forward_args):
         h_tm1 = forward_args['dec_init_state']
         # (batch_size, hidden_size)
@@ -154,21 +133,24 @@ class BaseDecoder(AbstractDecoder, ABC):
         state_tm1 = ((h_t, cell_t), att_t)
         return state_tm1, (decoder_output, alpha_t)
 
-    def forward(self, tgt_in_tensor: Tensor, tgt_out_tensor: Tensor, **kwargs) -> Tuple[Tensor, Tensor]:
-        static_input = self._init_loop(**kwargs)
-        state_tm1 = self._init_step(**kwargs)
-
+    def forward(self, tgt_in_tensor: Tensor, tgt_out_tensor: Tensor, src_encodings, src_lens, src_last_state, src_last_cell) \
+            -> Tuple[Tensor, Tensor]:
+        att_tm1 = torch.zeros(src_encodings.size(0), self.hidden_size, device=self.device)
         teacher_forcing = True if random.random() < self.teacher_forcing_ratio else False
 
         if teacher_forcing:
             out_vecs = []
-            tgt_in_embeddings = self.embed_layer(tgt_in_tensor)
+            print("tgt_in_tensor: ", tgt_in_tensor.shape)
+            tgt_in_tensor = tgt_in_tensor.permute(1, 0)
+            tgt_in_embeddings = self.embed_layer(tgt_in_tensor).permute(1, 0, 2)
             # start from y_0=`<s>`, iterate until y_{T-1}
             for y_tm1_embed in tgt_in_embeddings.split(split_size=1, dim=0):
                 # (batch_size, embed_size)
                 y_tm1_embed = y_tm1_embed.squeeze(0)
+                print(y_tm1_embed .shape)
+                assert False, "STOP"
                 # out_vec may contain tensors related to attentions
-                state_tm1, out_vec = self.step(y_tm1_embed, static_input, state_tm1)
+                state_tm1, out_vec = self.step(y_tm1_embed, (src_encodings, src_lens), ((src_last_state, src_last_cell), att_tm1))
                 out_vecs.append(out_vec)
             # (tgt_in_sent_len - 1, batch_size, hidden_size)
             prob_input = self.prepare_prob_input(out_vecs, **kwargs)
