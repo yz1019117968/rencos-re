@@ -19,34 +19,8 @@ from modules.GlobalAttention import GlobalAttention
 from modules.utils.misc import negative_log_likelihood
 from torch import nn, Tensor
 
-class AbstractDecoder(nn.Module, ABC):
-    def __init__(self):
-        super(AbstractDecoder, self).__init__()
-        # VocabEntry
-        self.vocab = None
-        self.embed_layer = None
-        self.rnn_cell = None
-        self.readout = None
-        self.loss_func = None
 
-    @property
-    @abstractmethod
-    def device(self):
-        pass
-
-    @abstractmethod
-    def step(self, y_tm1_embed: Tensor, static_input: Any, state_tm1: Tuple) -> Tuple[Tuple, Tuple[Tensor]]:
-        """
-        :param y_tm1_embed:
-        :param static_input:
-        :param state_tm1:
-        :return: state_tm1, out_vec
-                 out_vec may contain all information to calculate words_log_prob
-        """
-        pass
-
-
-class Decoder(AbstractDecoder, ABC):
+class Decoder(nn.Module, ABC):
 
     def __init__(self, embed_size: int, hidden_size: int, vocab: VocabEntry,
                  embed_layer: nn.Module, num_layers: int, dropout_rate: float, args: dict,
@@ -70,10 +44,11 @@ class Decoder(AbstractDecoder, ABC):
         self.attention = GlobalAttention(self.hidden_size, False, self.attn_type, self.attn_func)
         self.rnn_layer = LSTM(input_size, self.hidden_size, num_layers, bidirectional=False, batch_first=False,
                               dropout=dropout_rate)
-        # self.rnn_cell = LSTMCell(input_size, hidden_size, dropout=self.dropout_rate)
         # y.size+s_size+c_size
         self.generator_function = Linear(embed_size+hidden_size+hidden_size, hidden_size)
         self.tanh = nn.Tanh()
+        self.readout = Linear(self.hidden_size, len(self.vocab), bias=False)
+        self.loss_func = loss_func
 
     @property
     def device(self):
@@ -91,7 +66,7 @@ class Decoder(AbstractDecoder, ABC):
         else:
             raise Exception("Unexpected type of out_vecs: {}".format(type(out_vecs)))
 
-    def cal_words_log_prob(self, att_ves: Tensor, *args) -> DoubleTensor:
+    def cal_words_log_prob(self, att_ves: Tensor) -> DoubleTensor:
         # (tgt_sent_len - 1, batch_size, tgt_vocab_size) or (batch_size, tgt_vocab_size)
         tgt_vocab_scores = self.readout(att_ves)
         words_log_prob = F.log_softmax(tgt_vocab_scores, dim=-1).double()
@@ -109,94 +84,61 @@ class Decoder(AbstractDecoder, ABC):
         word_losses = self.loss_func(words_log_prob, target_tensor, words_mask)
         return word_losses
 
-    def step(self, y_tm1_embed: Tensor, static_input: Any, state_tm1: Tuple) -> Tuple[Tuple, Tuple]:
-        src_encodings, src_lens = static_input
-        h_tm1, att_tm1 = state_tm1
-        print("att_tm1: ", att_tm1.shape)
-        if self.input_feed:
-            x = torch.cat([y_tm1_embed, att_tm1], dim=-1)
-        else:
-            x = torch.cat([y_tm1_embed], dim=-1)
-        print("x: ", x.shape)
-        # h_t: (batch_size, hidden_size)
-        h_t, cell_t = self.rnn_cell(x, h_tm1)
-        print("h_t: ", h_t.shape)
-        print("cell_t: ", cell_t.shape)
-        # ctx_t: src_encoding_state
-        # todo src_sent_masks need to be changed to sentence lengths
-        att_t, alpha_t = self.attention(
-            h_t, src_encodings, src_sent_masks)
-        cat_final = torch.cat([y_tm1_embed, h_t, att_t], dim=-1)
-        decoder_output = self.tanh(self.generator_function(cat_final))
-
-        state_tm1 = ((h_t, cell_t), att_t)
-        return state_tm1, (decoder_output, alpha_t)
-
     def forward(self, tgt_in_tensor: Tensor, tgt_out_tensor: Tensor, src_encodings, src_lens, last_state, last_cell) \
             -> Tuple[Tensor, Tensor]:
         att_tm1 = torch.zeros(1, tgt_in_tensor.size(1), self.hidden_size, device=self.device)
         teacher_forcing = True if random.random() < self.teacher_forcing_ratio else False
+        out_vecs = []
+        att_maps = []
         if teacher_forcing:
-            out_vecs = []
             tgt_in_tensor = tgt_in_tensor.permute(1, 0)
             tgt_in_embeddings = self.embed_layer(tgt_in_tensor).permute(1, 0, 2)
+            print(tgt_in_embeddings.shape)
             # start from y_0=`<s>`, iterate until y_{T-1}
             for y_tm1_embed in tgt_in_embeddings.split(split_size=1, dim=0):
-                # from (1, batch_size, embed_size) to (batch_size, embed_size)
-                y_tm1_embed = y_tm1_embed
-                # out_vec may contain tensors related to attentions
                 if self.input_feed:
                     x = torch.cat([y_tm1_embed, att_tm1], dim=-1)
                 else:
                     x = torch.cat([y_tm1_embed], dim=-1)
-                print("x: ", x.shape)
-                print("last_state: ", last_state.shape)
-                print("last_cell: ", last_cell.shape)
                 out_vec, (last_state, last_cell) = self.rnn_layer(x, (last_state, last_cell))
-                state_attn = last_state.permute(1, 0, 2)
                 # for each variable, remember to put in on gpu
-                src_len_attn = torch.tensor(src_lens, dtype=torch.int).to(self.device)
-                print("out_vec: ", out_vec.shape)
-                print("state_attn: ", state_attn.shape)
-                print("last_cell: ", last_cell.shape)
-                print("src_encodings: ", src_encodings.shape)
-                print("src_lens: ", len(src_lens))
                 att_t, alpha_t = self.attention(
-                    state_attn, src_encodings, src_len_attn)
-                print("att_t: ", att_t.shape)
-                print("alpha_t: ", alpha_t.shape)
-                assert False, "STOP"
-                cat_final = torch.cat([y_tm1_embed, h_t, att_t], dim=-1)
+                    last_state.permute(1, 0, 2), src_encodings,
+                    torch.tensor(src_lens, dtype=torch.int).to(self.device)
+                )
+                cat_final = torch.cat([y_tm1_embed, last_state, att_t], dim=-1)
                 decoder_output = self.tanh(self.generator_function(cat_final))
-
-                state_tm1 = ((h_t, cell_t), att_t)
-                # state_tm1, out_vec = self.step(y_tm1_embed, (src_encodings, src_lens), ((src_last_state, src_last_cell), att_tm1))
-                out_vecs.append(out_vec)
-            # (tgt_in_sent_len - 1, batch_size, hidden_size)
+                out_vecs.append(decoder_output)
+                att_maps.append(alpha_t)
+                att_tm1 = att_t
+            # out_vecs: (tgt_in_sent_len - 1, batch_size, hidden_size)
             prob_input = self.prepare_prob_input(out_vecs)
             words_log_prob = self.cal_words_log_prob(*prob_input)
+            print(words_log_prob.shape)
             ys = words_log_prob.max(dim=-1)[1]
         else:
-            words_log_prob = []
-            ys = []
-            y_t = tgt_in_tensor[0]
-            for di in range(tgt_in_tensor.size(0)):
-                out_of_vocab = (y_t >= len(self.vocab))
-                y_tm1 = y_t.masked_fill(out_of_vocab, self.vocab.unk_id)
-
-                # (batch_size, embed_size)
-                y_tm1_embed = self.embed_layer(y_tm1)
-                # out_vec may contain tensors related to attentions
-                state_tm1, out_vec = self.step(y_tm1_embed, static_input, state_tm1)
-
-                prob_input = self.prepare_prob_input(out_vec, **kwargs)
-                # (batch_size, vocab_size)
-                log_prob_t = self.cal_words_log_prob(*prob_input)
-                words_log_prob.append(log_prob_t)
-                y_t = log_prob_t.max(dim=1)[1]
-                ys.append(y_t)
-            words_log_prob = torch.stack(words_log_prob, dim=0)
-            ys = torch.stack(ys, dim=0)
+            raise Exception("Decay Sampling has not been implemented yet! Pls set the teacher forcing rate to 1.0.")
+            # todo decay sampling
+            # words_log_prob = []
+            # ys = []
+            # y_t = tgt_in_tensor[0]
+            # for di in range(tgt_in_tensor.size(0)):
+            #     out_of_vocab = (y_t >= len(self.vocab))
+            #     y_tm1 = y_t.masked_fill(out_of_vocab, self.vocab.unk_id)
+            #
+            #     # (batch_size, embed_size)
+            #     y_tm1_embed = self.embed_layer(y_tm1)
+            #     # out_vec may contain tensors related to attentions
+            #     state_tm1, out_vec = self.step(y_tm1_embed, static_input, state_tm1)
+            #
+            #     prob_input = self.prepare_prob_input(out_vec, **kwargs)
+            #     # (batch_size, vocab_size)
+            #     log_prob_t = self.cal_words_log_prob(*prob_input)
+            #     words_log_prob.append(log_prob_t)
+            #     y_t = log_prob_t.max(dim=1)[1]
+            #     ys.append(y_t)
+            # words_log_prob = torch.stack(words_log_prob, dim=0)
+            # ys = torch.stack(ys, dim=0)
 
         word_losses = self.cal_word_losses(tgt_out_tensor, words_log_prob)
 

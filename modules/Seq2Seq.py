@@ -71,7 +71,6 @@ class Seq2Seq(base.BaseModel, ABC):
         tgt_out_tensor = batch.get_tgt_out_tensor(self.tgt_vocab, self.device)
 
         word_losses, ys = self.decoder(tgt_in_tensor, tgt_out_tensor, src_encodings, src_lens, src_last_state, src_last_cell)
-
         # (batch_size,)
         example_losses = word_losses.sum(dim=0)
         return example_losses
