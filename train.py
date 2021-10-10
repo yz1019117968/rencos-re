@@ -4,7 +4,6 @@
 # file description:
 # created at:5/10/2021 3:34 PM
 
-# encoding=utf-8
 
 """
 Usage:
