@@ -59,9 +59,11 @@ class Example(AbstractExample):
     @property
     def get_tgt_desc_tokens(self):
         return self._tgt_tokens
-    # @property
-    # def tgt_words_num(self):
-    #     return len(self.tgt_tokens) - 1
+
+    # for validate step, the predicted word number is len(self.tgt_tokens) - 1
+    @property
+    def tgt_words_num(self):
+        return len(self.tgt_tokens) - 1
 
 # class TestExample(AbstractExample):
 #     def __init__(self, instance):
@@ -111,9 +113,10 @@ class Batch(object):
     def __getitem__(self, item) -> Example:
         return self.examples[item]
 
-    # @property
-    # def tgt_words_num(self) -> int:
-    #     return sum([e.tgt_words_num for e in self.examples])
+    # for validate step
+    @property
+    def tgt_words_num(self) -> int:
+        return sum([e.tgt_words_num for e in self.examples])
 
     @property
     def src_tokens(self):

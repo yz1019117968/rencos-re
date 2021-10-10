@@ -28,7 +28,7 @@ Options:
     --train-batch-size INT    train batch size [default: 32]
     --valid-batch-size INT    valid batch size [default: 32]
     --lr FLOAT                learning rate [default: 0.001]
-    --dropout-rate FLOAT      dropout rate [default: 0.5]
+    --dropout-rate FLOAT      dropout rate [default: 0.2]
     --teacher-forcing FLOAT   teacher forcing ratio [default: 1.0]
     --clip-grad FLOAT         gradient clipping [default: 5.0]
     --log-every INT           log interval [default: 100]
@@ -42,18 +42,8 @@ Options:
     --example-class STR       Example Class used to load an example [default: dataset.Example]
 """
 
-# Reference: https://github.com/pcyin/pytorch_basic_nmt
-# python train.py --train-data ./dataset/train.jsonl --dev-data ./dataset/valid.jsonl --vocab ./dataset/mix_vocab.json --cuda
-#                                        --input-feed \
-#                                        --share-embed \
-#                                        --mix-vocab \
-#                                        --dropout 0.2 \
-#                                        --use-pre-embed \
-#                                        --freeze-pre-embed \
-#                                        --vocab-embed ${ds_dir}/mix_vocab_embeddings.pkl \
-#                                        --model-class ${model_class} \
-#                                        --log-dir ${dir} \
-#                                        --save-to ${model_path}
+# Reference 1: https://github.com/pcyin/pytorch_basic_nmt
+# Reference 2: https://github.com/Tbabm/CUP
 import time
 from abc import ABC, abstractmethod
 from docopt import docopt
@@ -179,7 +169,7 @@ class Trainer(Procedure):
         super(Trainer, self).__init__(args)
         self._device = None
         self._cur_patience = 0
-        self._cur_trail = 0
+        # self._cur_trail = 0
         self._hist_valid_scores = []
         self.tf_logger = TFLogger(self._args['--log-dir']) if tf_log else None
 
@@ -241,7 +231,8 @@ class Trainer(Procedure):
         loss = batch_loss / len(batch)
         loss.backward()
         # clip gradient
-        torch.nn.utils.clip_grad_norm_(self._model.parameters(), self._clip_grad)
+        if self._clip_grad != -1:
+            torch.nn.utils.clip_grad_norm_(self._model.parameters(), self._clip_grad)
         self._optimizer.step()
         return batch_loss.item()
 
@@ -270,13 +261,13 @@ class Trainer(Procedure):
         for param_group in self._optimizer.param_groups:
             param_group['lr'] = lr
 
-    def _validate(self, dev_set):
+    def _validate(self, val_set):
         was_training = self._model.training
         self._model.eval()
         cum_loss = 0
         cum_tgt_words = 0
         with torch.no_grad():
-            for batch in dev_set.train_batch_iter(self._valid_batch_size, shuffle=False):
+            for batch in val_set.train_batch_iter(self._valid_batch_size, shuffle=False):
                 batch_loss = self._model(batch).sum()
                 cum_loss += batch_loss.item()
                 cum_tgt_words += batch.tgt_words_num
@@ -289,10 +280,10 @@ class Trainer(Procedure):
 
         return valid_metric
 
-    def validate(self, train_iter, dev_set, loss_reporter):
+    def validate(self, train_iter, val_set, loss_reporter):
         logging.info('begin validation ...')
 
-        valid_metric = self._validate(dev_set)
+        valid_metric = self._validate(val_set)
         loss_reporter.report_valid(train_iter, valid_metric)
 
         is_better = len(self._hist_valid_scores) == 0 or valid_metric > max(self._hist_valid_scores)
@@ -320,7 +311,7 @@ class Trainer(Procedure):
         return train_set, val_set
 
     def train(self):
-        train_set, dev_set = self.load_dataset()
+        train_set, val_set = self.load_dataset()
         self._init_model()
 
         epoch = train_iter = 0
@@ -342,26 +333,22 @@ class Trainer(Procedure):
                     loss_reporter.report_cum(epoch, train_iter)
                     loss_reporter.reset_cum_stat()
 
-                    is_better = self.validate(train_iter, dev_set, loss_reporter)
+                    is_better = self.validate(train_iter, val_set, loss_reporter)
                     if is_better:
                         self._cur_patience = 0
                         self.save_model()
                     else:
                         self._cur_patience += 1
                         logging.info('hit patience {}'.format(self._cur_patience))
-
                         if self._cur_patience == self._max_patience:
-                            self._cur_trail += 1
-                            logging.info('hit #{} trial'.format(self._cur_trail))
-                            if self._cur_trail == self._max_trial_num:
-                                logging.info('early stop!')
-                                return
-
-                            self.decay_lr()
-
-                            # reset patience
-                            self._cur_patience = 0
-
+                            # self._cur_trail += 1
+                            # logging.info('hit #{} trial'.format(self._cur_trail))
+                            # if self._cur_trail == self._max_trial_num:
+                            logging.info('early stop!')
+                            return
+                        self.decay_lr()
+                            # # reset patience
+                            # self._cur_patience = 0
             if epoch == self._max_epoch:
                 logging.info('reached maximum number of epochs')
                 return

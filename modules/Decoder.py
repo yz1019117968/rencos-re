@@ -93,7 +93,6 @@ class Decoder(nn.Module, ABC):
         if teacher_forcing:
             tgt_in_tensor = tgt_in_tensor.permute(1, 0)
             tgt_in_embeddings = self.embed_layer(tgt_in_tensor).permute(1, 0, 2)
-            print(tgt_in_embeddings.shape)
             # start from y_0=`<s>`, iterate until y_{T-1}
             for y_tm1_embed in tgt_in_embeddings.split(split_size=1, dim=0):
                 if self.input_feed:
@@ -114,7 +113,6 @@ class Decoder(nn.Module, ABC):
             # out_vecs: (tgt_in_sent_len - 1, batch_size, hidden_size)
             prob_input = self.prepare_prob_input(out_vecs)
             words_log_prob = self.cal_words_log_prob(*prob_input)
-            print(words_log_prob.shape)
             ys = words_log_prob.max(dim=-1)[1]
         else:
             raise Exception("Decay Sampling has not been implemented yet! Pls set the teacher forcing rate to 1.0.")
