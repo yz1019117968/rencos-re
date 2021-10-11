@@ -99,13 +99,8 @@ class Beam(BaseBeam):
 
     def next_y_tm1(self):
         # NOTE: for ext vocab, we need to clip the y to the base_vocab
-        if isinstance(self.vocab, ExtVocabEntry):
-            base_vocab = self.vocab.base_vocab
-            live_hypo_words = [sent[-1] if sent[-1] < len(base_vocab) else base_vocab[UNK]
-                               for sent in self.live_hypo_sents]
-        else:
-            live_hypo_words = [sent[-1] for sent in self.live_hypo_sents]
-        y_tm1 = torch.tensor(live_hypo_words, dtype=torch.long, device=self.device)
+        live_hypo_words = [sent[-1] for sent in self.live_hypo_sents]
+        y_tm1 = torch.tensor(live_hypo_words, dtype=torch.long, device=self.device).unsqueeze(0)
         return y_tm1
 
     def step(self, words_log_prob, state_tm1, *args, **kwargs):

@@ -79,15 +79,11 @@ class Seq2Seq(base.BaseModel, ABC):
     def beam_search(self, example: Example, beam_size: int, max_dec_step: int,
                     BeamClass=Beam) -> List[Hypothesis]:
         batch = Batch([example])
-        input_tensor = self.construct_src_input(batch)
-        encoder_output = self.encode(*input_tensor)
-        # for idx, key in enumerate(encoder_output.keys()):
-        #     print(key)
-        #     print(encoder_output[key].size())
-        #     if idx + 2 == len(encoder_output):
-        #         break
-        decoder_kwargs = self.prepare_decoder_kwargs(encoder_output, batch)
-        hypos = self.nl_decoder.beam_search(example, beam_size, max_dec_step, BeamClass, **decoder_kwargs)
+        src_tensor = batch.get_src_tensor(self.src_vocab, self.device)
+        src_lens = batch.get_src_lens()
+        src_encodings, src_last_state, src_last_cell = self.encoder(src_tensor, src_lens)
+        hypos = self.decoder.beam_search(example, beam_size, max_dec_step, BeamClass,
+                                         src_encodings, src_lens, src_last_state, src_last_cell)
         return hypos
 
     def _get_sent_masks(self, max_len: int, sent_lens: List[int]):

@@ -11,7 +11,7 @@ Usage:
 
 Options:
     -h --help                 show this screen.
-    --cuda INT                use GPU [default: 0]
+    --cuda INT                use GPU [default: true]
     --src-max-len INT         max length of src [default: 100]
     --tgt-max-len INT         max length of tgt [default: 50]
     --model-class STR         model class [default: modules.Seq2Seq.Seq2Seq]
@@ -154,7 +154,7 @@ class Procedure(ABC):
         self._model = None
 
     def _set_device(self):
-        self._device = torch.device("cuda:0" if self._args['--cuda'] else "cpu")
+        self._device = torch.device("cuda:0" if bool(self._args['--cuda']) else "cpu")
         logging.info("use device: {}".format(self._device))
         self._model.to(self._device)
 
