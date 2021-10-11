@@ -100,10 +100,12 @@ class Beam(BaseBeam):
     def next_y_tm1(self):
         # NOTE: for ext vocab, we need to clip the y to the base_vocab
         live_hypo_words = [sent[-1] for sent in self.live_hypo_sents]
-        y_tm1 = torch.tensor(live_hypo_words, dtype=torch.long, device=self.device).unsqueeze(0)
+        y_tm1 = torch.tensor(live_hypo_words, dtype=torch.long, device=self.device).unsqueeze(1)
         return y_tm1
 
     def step(self, words_log_prob, state_tm1, *args, **kwargs):
+        # assert False, "FALSE"
+
         cur_hypo_scores = self.live_hypo_scores.unsqueeze(1).expand_as(words_log_prob) + words_log_prob
         # prepare more candidates to avoid empty candidate
         topk_scores, topk_hypo_ids, topk_word_ids = self._topk_candidates(cur_hypo_scores,
@@ -128,6 +130,7 @@ class Beam(BaseBeam):
         new_state = []
         for s in state_tm1:
             if isinstance(s, tuple):
+                # print(s)
                 new_state.append(tuple(sub_s[new_hypo_ids] for sub_s in s))
             else:
                 new_state.append(s[new_hypo_ids])

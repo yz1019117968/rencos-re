@@ -57,7 +57,7 @@ class Example(AbstractExample):
         return self._tgt_tokens + [TGT_END]
 
     @property
-    def get_tgt_desc_tokens(self):
+    def tgt_desc_tokens(self):
         return self._tgt_tokens
 
     # for validate step, the predicted word number is len(self.tgt_tokens) - 1

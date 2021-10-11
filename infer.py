@@ -81,7 +81,7 @@ class Infer(Procedure):
 
         with open(self._args['OUTPUT_FILE_OBS'], 'w', encoding="utf-8") as fw:
             for hypo, example in zip(hypos,test_set):
-                fw.write(f'{example._sample_id}: ' + " ".join(example.get_tgt_desc_tokens()))
+                fw.write(f'{example._sample_id}: ' + " ".join(example.tgt_desc_tokens))
                 fw.write('\n')
                 for i in hypo:
                     fw.write(" ".join(i[0]))

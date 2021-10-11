@@ -54,13 +54,13 @@ class Decoder(nn.Module, ABC):
     def device(self):
         return self.embed_layer.weight.device
 
-    def prepare_prob_input(self, out_vecs: Union[Tuple[Tensor], List[Tuple[Tensor]]]) -> Tuple:
+    def prepare_prob_input(self, out_vecs: Union[Tensor, List[Tensor]]) -> Tuple:
         """
         :param out_vecs: the out_vec of a step or the whole loop
-        :return: inputs required by cal_words_log_prob
+        :return: inputs required by cal_words_log_prob, type: tuple
         """
-        if isinstance(out_vecs, Tuple):
-            return tuple([out_vecs[0]])
+        if isinstance(out_vecs, Tensor):
+            return tuple([out_vecs])
         elif isinstance(out_vecs, List):
             return tuple([torch.stack([out_v[0] for out_v in out_vecs])])
         else:
@@ -93,7 +93,7 @@ class Decoder(nn.Module, ABC):
         # for each variable, remember to put in on gpu
         att_t, alpha_t = self.attention(
             last_state.permute(1, 0, 2), src_encodings,
-            torch.tensor(src_lens, dtype=torch.int).to(self.device)
+            src_lens
         )
         cat_final = torch.cat([y_tm1_embed, last_state, att_t], dim=-1)
         decoder_output = self.tanh(self.generator_function(cat_final))
@@ -113,6 +113,7 @@ class Decoder(nn.Module, ABC):
         """
         att_tm1 = torch.zeros(1, tgt_in_tensor.size(1), self.hidden_size, device=self.device)
         teacher_forcing = True if random.random() < self.teacher_forcing_ratio else False
+        src_lens = torch.tensor(src_lens, dtype=torch.int).to(self.device)
         out_vecs = []
         att_maps = []
         if teacher_forcing:
@@ -175,18 +176,17 @@ class Decoder(nn.Module, ABC):
         beam = BeamClass(self.vocab, self.device, beam_size, example.src_tokens)
         cur_step = 0
         att_tm1 = torch.zeros(1, 1, self.hidden_size, device=self.device)
-        out_vecs = []
-        att_maps = []
+        src_lens = torch.tensor(src_lens, dtype=torch.int).to(self.device)
         while (not beam.is_finished) and cur_step < max_dec_step:
             cur_step += 1
             y_tm1 = beam.next_y_tm1()
-            y_tm1_embed = self.embed_layer(y_tm1)
-            # cur_static_input = beam.expand_static_input(static_input)
+            y_tm1_embed = self.embed_layer(y_tm1).permute(1, 0, 2)
+            cur_static_input = beam.expand_static_input((src_encodings, src_lens))
             # assert False, "FALSE"
-            att_tm1, alpha_t, last_state, last_cell, decoder_output = self.step(y_tm1_embed, att_tm1, src_encodings, src_lens, last_state, last_cell)
+            att_t, alpha_t, state_t, cell_t, decoder_output = self.step(y_tm1_embed, att_tm1, *cur_static_input, last_state, last_cell)
             prob_input = self.prepare_prob_input(decoder_output)
             words_log_prob = self.cal_words_log_prob(*prob_input)
-            # todo stop here
-            state_tm1 = beam.step(words_log_prob, state_tm1)
-
+            (state_t, att_t) = beam.step(words_log_prob, ((state_t.permute(1, 0, 2), cell_t.permute(1, 0, 2)), att_t.permute(1, 0, 2)))
+            last_state, last_cell = state_t[0].permute(1, 0, 2), state_t[1].permute(1,0,2)
+            att_tm1 = att_t.permute(1, 0, 2)
         return beam.get_final_hypos()
