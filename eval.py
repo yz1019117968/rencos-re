@@ -12,7 +12,7 @@ Options:
     -h --help                   show this screen.
     --src-max-len INT           max length of src [default: 100]
     --tgt-max-len INT           max length of tgt [default: 50]
-    --metrics LIST              metrics to calculate [default: sent_bleu, corp_bleu, rouge, meteor]
+    --metrics LIST              metrics to calculate [default: sent_bleu,corp_bleu,rouge,meteor]
     --eval-class STR            the class used to evaluate [default: Evaluator]
 """
 
@@ -28,6 +28,7 @@ from nltk.translate.meteor_score import meteor_score
 import tensorflow as tf
 import numpy as np
 from rouge import Rouge
+
 
 class BaseMetric(ABC):
     @abstractmethod
@@ -47,7 +48,17 @@ class SentBLEU(BaseMetric):
         self.chencherry = SmoothingFunction()
 
     def eval(self, hypos: Iterable[List[List[str]]], references: Iterable[List[str]], *args, **kwargs) -> float:
-        return sentence_bleu(references, hypos, weights=(0.25, 0.25, 0.25, 0.25), smoothing_function=self.chencherry.method1)
+        scores = []
+        for hypo, ref in zip(hypos, references):
+            """
+            :param references: reference sentences
+            :type references: list(list(str))
+            :param hypothesis: a hypothesis sentence
+            :type hypothesis: list(str)
+            """
+            scores.append(sentence_bleu([ref], hypo[0], weights=(0.25, 0.25, 0.25, 0.25),
+                                        smoothing_function=self.chencherry.method1))
+        return np.mean(scores)
 
 class CorpBLEU(BaseMetric):
     def __init__(self):
@@ -55,7 +66,15 @@ class CorpBLEU(BaseMetric):
         self.chencherry = SmoothingFunction()
 
     def eval(self, hypos: Iterable[List[List[str]]], references: Iterable[List[str]], *args, **kwargs) -> float:
-        return corpus_bleu(references, hypos, weights=(0.25, 0.25, 0.25, 0.25), smoothing_function=self.chencherry.method1)
+        fine_hypos = [hypo[0] for hypo in hypos]
+        fine_refs = [[ref] for ref in references]
+        """
+        :param list_of_references: a corpus of lists of reference sentences, w.r.t. hypotheses
+        :type list_of_references: list(list(list(str)))
+        :param hypotheses: a list of hypothesis sentences
+        :type hypotheses: list(list(str))
+        """
+        return corpus_bleu(fine_refs, fine_hypos, weights=(0.25, 0.25, 0.25, 0.25), smoothing_function=self.chencherry.method1)
 
 class ROUGE(BaseMetric):
     def __init__(self):
@@ -63,46 +82,29 @@ class ROUGE(BaseMetric):
         self.rouge = Rouge()
 
     def eval(self, hypos: Iterable[List[List[str]]], references: Iterable[List[str]], *args, **kwargs) -> float:
-        return self.rouge.get_scores(" ".join(hypos), " ".join(references[0]))[0]['rouge-l']['f']
+        scores = []
+        for hypo, ref in zip(hypos, references):
+            """
+            :param references: reference sentences
+            :type references: string
+            :param hypothesis: a hypothesis sentence
+            :type hypothesis: string
+            """
+            scores.append(self.rouge.get_scores(" ".join(hypo[0]), " ".join(ref))[0]['rouge-l']['f'])
+        return np.mean(scores)
 
 class METEOR(BaseMetric):
     def eval(self, hypos: Iterable[List[List[str]]], references: Iterable[List[str]], *args, **kwargs) -> float:
-        return meteor_score([" ".join(references[0])], " ".join(hypos))
-
-# class EvaluationMetrics:
-#
-#     @staticmethod
-#     def smoothing1_sentence_bleu(reference, candidate):
-#         chencherry = SmoothingFunction()
-#         return sentence_bleu(reference, candidate, weights=(0.25, 0.25, 0.25, 0.25), smoothing_function=chencherry.method1)
-#     @staticmethod
-#     def smoothing1_corpus_bleu(references, candidates):
-#         chencherry = SmoothingFunction()
-#         return corpus_bleu(references, candidates, weights=(0.25, 0.25, 0.25, 0.25), smoothing_function=chencherry.method1)
-#
-#     @staticmethod
-#     def rouge(reference, candidate):
-#         rouge = Rouge()
-#         return rouge.get_scores(" ".join(candidate), " ".join(reference[0]))[0]['rouge-l']['f']
-#
-#     @staticmethod
-#     def meteor(reference, candidate):
-#         return meteor_score([" ".join(reference[0])], " ".join(candidate))
-
-
-# if __name__ == "__main__":
-#     candi = tf.constant([[1234, 12, 4, 5, 34, 1235, 0, 0], [1234, 22, 41, 35, 12, 1235, 0, 0], [1234, 34, 23, 22, 34, 123, 33, 23]])
-#     candi = candi.numpy().tolist()
-#     candi = EvaluationMetrics.remove_pad(candi, 1235, "candidates")
-#     # print(candi)
-#     refs = tf.constant([[12, 4, 5, 34, 1235, 0, 0, 0], [22, 41, 34, 12, 1235, 0, 0, 0], [34, 23, 22, 34, 123, 33, 23, 1235]])
-#     refs = EvaluationMetrics.remove_pad(refs.numpy().tolist(), 1235, "references")
-#     print("refs: ", refs)
-#     a = []
-#     for candidate, ref in zip(candi, refs):
-#         a.append(EvaluationMetrics.smoothing1_sentence_bleu(ref, candidate))
-#     print(np.mean(a))
-#     print(EvaluationMetrics.smoothing1_corpus_bleu(refs, candi))
+        scores = []
+        for hypo, ref in zip(hypos, references):
+            """
+            :param references: reference sentences
+            :type references: list(str)
+            :param hypothesis: a hypothesis sentence
+            :type hypothesis: str
+            """
+            scores.append(meteor_score([" ".join(ref)], " ".join(hypo[0])))
+        return np.mean(scores)
 
 class BaseEvaluator(ABC):
     @abstractmethod
@@ -137,7 +139,7 @@ class Evaluator(BaseEvaluator):
         return hypos
 
     def load_hypos_and_refs(self):
-        test_set = Dataset.create_from_file(self.args['TEST_SET_SRC'], self.args['TSET_SET_TGT'],
+        test_set = Dataset.create_from_file(self.args['TEST_SET_SRC'], self.args['TEST_SET_TGT'],
                                             self.args['--src-max-len'], self.args['--tgt-max-len'])
         references = list(test_set.get_ground_truth())
         hypos = self.load_hypos()
@@ -153,7 +155,6 @@ class Evaluator(BaseEvaluator):
     def evaluate(self):
         metrics = self.args['--metrics'].split(',')
         hypos, references = self.load_hypos_and_refs()
-        assert False, "FALSE"
         assert type(hypos[0][0]) == type(references[0])
         results = self.cal_metrics(metrics, hypos, references)
         logging.info(results)

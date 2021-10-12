@@ -2,11 +2,11 @@
 
 ### Dependency
 ```cmd
-python 3.6
-pytorch 1.9.0
-nltk 3.6.3
-rouge 1.0.1
-docopt 0.6.2
+python == 3.6
+pytorch == 1.9.0
+nltk == 3.6.3
+rouge == 1.0.1 ref: https://github.com/pltrdy/rouge
+docopt == 0.6.2
 ```
 
 ### Quick Start 

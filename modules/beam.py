@@ -63,9 +63,8 @@ class BaseBeam(AbstractBeam, ABC):
                 self.completed_hypos.append(Hypothesis(value=[], score=0))
             else:
                 self.add_completed_hypo(0, self.live_hypo_scores[0].item())
-
+        # 最终5个句子的排名根据句子长短和分数共同评价
         self.completed_hypos.sort(key=lambda hypo: hypo.score / max(len(hypo.value), 1), reverse=True)
-
         return self.completed_hypos
 
     @abstractmethod
@@ -104,8 +103,7 @@ class Beam(BaseBeam):
         return y_tm1
 
     def step(self, words_log_prob, state_tm1, *args, **kwargs):
-        # assert False, "FALSE"
-
+        # 因为是log_prob, 所以为负
         cur_hypo_scores = self.live_hypo_scores.unsqueeze(1).expand_as(words_log_prob) + words_log_prob
         # prepare more candidates to avoid empty candidate
         topk_scores, topk_hypo_ids, topk_word_ids = self._topk_candidates(cur_hypo_scores,
@@ -130,7 +128,6 @@ class Beam(BaseBeam):
         new_state = []
         for s in state_tm1:
             if isinstance(s, tuple):
-                # print(s)
                 new_state.append(tuple(sub_s[new_hypo_ids] for sub_s in s))
             else:
                 new_state.append(s[new_hypo_ids])
