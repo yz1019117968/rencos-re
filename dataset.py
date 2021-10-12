@@ -206,7 +206,7 @@ class Dataset(object):
     def get_ground_truth(self) -> Iterable[List[str]]:
         for e in self.examples:
             # remove the <s> and </s>
-            yield e.get_tgt_desc_tokens
+            yield e.tgt_desc_tokens
 
     def _batch_iter(self, batch_size: int, shuffle: bool, sort_by_length: bool) -> Batch:
         batch_num = math.ceil(len(self) / batch_size)
