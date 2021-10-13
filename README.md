@@ -11,6 +11,11 @@ nlg-eval == 2.3 ref: https://github.com/Maluuba/nlg-eval
 ```
 
 ### Quick Start 
+- Retrieval
+```cmd
+cd scripts
+retrieve.bat
+```
 - Build Vocab
 ```cmd
 cd scripts
@@ -34,4 +39,5 @@ infer.bat
 cd scripts
 eval.bat
 ```
+
 

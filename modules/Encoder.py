@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from typing import List, Tuple
 import torch
 from torch import nn, Tensor
-from modules.base import permute_lstm_output, LSTM
+from modules.base import LSTM
 
 
 class BaseEncoder(nn.Module, ABC):
@@ -40,7 +40,7 @@ class Encoder(BaseEncoder):
 
     def forward(self, src_tensor: torch.Tensor, src_lens: List[int]):
         """
-        :param src_tensor: (batch_size, src_sent_len)
+        :param src_tensor: (src_sent_len， batch_size)
         :param src_lens:
         :return: (src_sent_len, batch_size, hidden_size*num_directions),
                 (num_layers*num_directions, batch_size, hidden_size),

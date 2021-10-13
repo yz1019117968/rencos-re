@@ -105,6 +105,6 @@ def retriever(file_dir):
 
 
 if __name__ == '__main__':
-    root = '../samples/%s'%sys.argv[1]
+    root = './samples/%s'%sys.argv[1]
     build_index(root)
     retriever(root)

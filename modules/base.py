@@ -31,6 +31,7 @@ class BaseModel(nn.Module, ABC):
     @classmethod
     def load(cls, model_path: str):
         params = torch.load(model_path, map_location=lambda storage, loc: storage)
+        print("TYPE: ", type(params))
         args = params['args']
         model = cls(*args)
         model.load_state_dict(params['state_dict'])
@@ -97,16 +98,6 @@ class Linear(nn.Module):
         if hasattr(self, 'dropout'):
             x = self.dropout(x)
         return self.linear(x)
-
-
-def permute_lstm_output(encodings: torch.Tensor, last_state: torch.Tensor, last_cell: torch.Tensor):
-    # (batch_size, sent_len, hidden_size)
-    # output.view(seq_len, batch, num_directions, hidden_size)
-    encodings = encodings.permute(1, 0, 2)
-    # (batch_size, hidden_size * directions * #layers
-    last_state = last_state.sum(0).unsqueeze(0)
-    last_cell = last_cell.sum(0).unsqueeze(0)
-    return encodings, last_state, last_cell
 
 if __name__ == "__main__":
     lstm = LSTM(3, 4, 1, bidirectional=True, batch_first=False, dropout=0.5)
