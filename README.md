@@ -7,6 +7,7 @@ pytorch == 1.9.0
 nltk == 3.6.3
 rouge == 1.0.1 ref: https://github.com/pltrdy/rouge
 docopt == 0.6.2
+nlg-eval == 2.3 ref: https://github.com/Maluuba/nlg-eval
 ```
 
 ### Quick Start 

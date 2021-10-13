@@ -12,7 +12,7 @@ Options:
     -h --help                   show this screen.
     --src-max-len INT           max length of src [default: 100]
     --tgt-max-len INT           max length of tgt [default: 50]
-    --metrics LIST              metrics to calculate [default: sent_bleu,corp_bleu,rouge,meteor]
+    --metrics LIST              metrics to calculate [default: sent_bleu,corp_bleu,rouge,meteor,cider]
     --eval-class STR            the class used to evaluate [default: Evaluator]
 """
 
@@ -25,7 +25,7 @@ from dataset import Dataset
 logging.basicConfig(level=logging.INFO)
 from nltk.translate.bleu_score import corpus_bleu, sentence_bleu, SmoothingFunction
 from nltk.translate.meteor_score import meteor_score
-import tensorflow as tf
+from nlgeval import NLGEval
 import numpy as np
 from rouge import Rouge
 
@@ -106,6 +106,19 @@ class METEOR(BaseMetric):
             scores.append(meteor_score([" ".join(ref)], " ".join(hypo[0])))
         return np.mean(scores)
 
+class NLGMetrics(BaseMetric):
+    def __init__(self, *args, **kwargs):
+        self.nlgeval = NLGEval(no_glove=True, no_skipthoughts=True)
+
+    def eval(self, hypos: Iterable[List[List[str]]], references: Iterable[List[str]], *args, **kwargs) -> dict:
+        # List[str]
+        first_hypos = [" ".join(hypo_list[0]) for hypo_list in hypos]
+        #
+        refs = [[" ".join(ref) for ref in references]]
+        # distinct
+        metrics_dict = self.nlgeval.compute_metrics(refs, first_hypos)
+        return metrics_dict['CIDEr']
+
 class BaseEvaluator(ABC):
     @abstractmethod
     def load_hypos_and_refs(self) -> Tuple[List[List[List[str]]], List[List[str]], List[List[str]]]:
@@ -117,7 +130,8 @@ class Evaluator(BaseEvaluator):
         "sent_bleu": SentBLEU(),
         "corp_bleu": CorpBLEU(),
         "rouge": ROUGE(),
-        "meteor": METEOR()
+        "meteor": METEOR(),
+        "cider": NLGMetrics()
     }
 
     def __init__(self, args: dict, metric_map: dict = None):
@@ -158,7 +172,6 @@ class Evaluator(BaseEvaluator):
         assert type(hypos[0][0]) == type(references[0])
         results = self.cal_metrics(metrics, hypos, references)
         logging.info(results)
-        print(results)
         return results
 
 
