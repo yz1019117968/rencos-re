@@ -75,7 +75,6 @@ class Seq2Seq(base.BaseModel, ABC):
         example_losses = word_losses.sum(dim=0)
         return example_losses
 
-    # todo  modify beam search
     def beam_search(self, example: Example, beam_size: int, max_dec_step: int,
                     BeamClass=Beam) -> List[Hypothesis]:
         batch = Batch([example])
