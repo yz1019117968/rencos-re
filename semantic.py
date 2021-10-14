@@ -6,7 +6,8 @@
 
 """
 Usage:
-  semantic.py [options] MODEL_PATH VOCAB_FILE TRAIN_SET_SRC TRAIN_SET_TGT TEST_SET_SRC TEST_SET_TGT QUERY_OUT_PATH SOURCE_OUT_PATH
+  semantic.py [options] MODEL_PATH VOCAB_FILE TRAIN_SET_SRC TRAIN_SET_TGT
+  TEST_SET_SRC TEST_SET_TGT QUERY_OUT_PATH SOURCE_OUT_PATH SIMI_ID_OUT
 
 Options:
     -h --help                 show this screen.
@@ -58,19 +59,45 @@ class Retriever(Procedure):
 
     def retrieve(self):
         """
-        retrieve the most similar code based on code semantics, then save the source code and corresponding summaries.
+        retrieve the most similar code based on code semantics, then save the id and score first,
+        then todo: save source code and corresponding summaries.
         :param args:
         :return:
         """
-        stop_word = [i for i in re.finditer("/", self._args['QUERY_OUT_PATH'])][-1].span()[1]
-        test_vec_files = [file for file in os.listdir(self._args['QUERY_OUT_PATH'][: stop_word]) if file.startswith("test.vec.pkl.")]
-        print(test_vec_files)
-        # with open(, "rb") as fr:
-        #     pkl.load(fr)
+        test_stop_word = [i for i in re.finditer("/", self._args['QUERY_OUT_PATH'])][-1].span()[1]
+        test_vec_files = [file for file in os.listdir(self._args['QUERY_OUT_PATH'][: test_stop_word]) if file.startswith("test.vec.pkl.")]
+        train_stop_word = [i for i in re.finditer("/", self._args['SOURCE_OUT_PATH'])][-1].span()[1]
+        train_vec_files = [file for file in os.listdir(self._args['SOURCE_OUT_PATH'][: train_stop_word]) if file.startswith("train.vec.pkl.")]
+
+        cos = nn.CosineSimilarity(1, 1e-6)
+        simi_ids = []
+        for test_file in test_vec_files:
+            with open(self._args['QUERY_OUT_PATH'][: test_stop_word] + test_file, "rb") as fr:
+                test_vecs = pkl.load(fr)
+            for ids, test_vec in enumerate(test_vecs):
+                # ((filename, id), score)
+                best_score = (("", -1), -1)
+                for train_file in train_vec_files:
+                    with open(self._args['SOURCE_OUT_PATH'][: train_stop_word] + train_file, "rb") as fr:
+                        train_vecs = pkl.load(fr)
+                    for idt, train_vec in enumerate(train_vecs):
+                        cur_score = cos(test_vec, train_vec)
+                        if cur_score > best_score[1]:
+                            best_score = ((train_file, idt), cur_score)
+                print("query {} completed!".format(ids))
+                simi_ids.append(best_score)
+
+        with open(self._args['SIMI_ID_OUT'], "wb", encoding="utf=8") as fw:
+            pkl.dump(simi_ids, fw)
+
 
 
 
     def save_vecs(self):
+        """
+        for the sake of time-saving, save samples' vectors in advance for further cosine similarity computing.
+        :return:
+        """
         self._init_model()
         train_set, test_set = self.prepare_dataset()
         self.save_vec(train_set, self._args['SOURCE_OUT_PATH'])
