@@ -57,6 +57,15 @@ class BaseBeam(AbstractBeam, ABC):
             new_static_input.append(s_input.repeat(new_size))
         return tuple(new_static_input)
 
+    def expand_iter_input(self, state_tm1, new_hypo_ids):
+        new_state = []
+        for s in state_tm1:
+            if isinstance(s, tuple):
+                new_state.append(tuple(sub_s[new_hypo_ids] for sub_s in s))
+            else:
+                new_state.append(s[new_hypo_ids])
+        return tuple(new_state)
+
     def get_final_hypos(self):
         if len(self.completed_hypos) == 0:
             if len(self.live_hypo_sents) == 0:
@@ -102,7 +111,7 @@ class Beam(BaseBeam):
         y_tm1 = torch.tensor(live_hypo_words, dtype=torch.long, device=self.device).unsqueeze(1)
         return y_tm1
 
-    def step(self, words_log_prob, state_tm1, *args, **kwargs):
+    def step(self, words_log_prob, *args, **kwargs):
         # 因为是log_prob, 所以为负
         cur_hypo_scores = self.live_hypo_scores.unsqueeze(1).expand_as(words_log_prob) + words_log_prob
         # prepare more candidates to avoid empty candidate
@@ -125,13 +134,13 @@ class Beam(BaseBeam):
         self.live_hypo_sents = new_hypo_sents
         self.live_hypo_scores = torch.tensor(new_hypo_scores, dtype=torch.float64, device=self.device)
         # update the states
-        new_state = []
-        for s in state_tm1:
-            if isinstance(s, tuple):
-                new_state.append(tuple(sub_s[new_hypo_ids] for sub_s in s))
-            else:
-                new_state.append(s[new_hypo_ids])
-        return tuple(new_state)
+        # new_state = []
+        # for s in state_tm1:
+        #     if isinstance(s, tuple):
+        #         new_state.append(tuple(sub_s[new_hypo_ids] for sub_s in s))
+        #     else:
+        #         new_state.append(s[new_hypo_ids])
+        # return tuple(new_state)
 
     def add_completed_hypo(self, hypo_id, score):
         # convert word_id to word

@@ -75,15 +75,33 @@ class Seq2Seq(base.BaseModel, ABC):
         example_losses = word_losses.sum(dim=0)
         return example_losses
 
-    def beam_search(self, example: Example, beam_size: int, max_dec_step: int,
-                    BeamClass=Beam) -> List[Hypothesis]:
+    def get_encoder_output(self, example: Example):
         batch = Batch([example])
         src_tensor = batch.get_src_tensor(self.src_vocab, self.device)
         src_lens = batch.get_src_lens()
         src_encodings, src_last_state, src_last_cell = self.encoder(src_tensor, src_lens)
+        return src_encodings, src_last_state, src_last_cell, src_lens
+
+    def beam_search(self, example: Example, beam_size: int, max_dec_step: int,
+                    BeamClass=Beam) -> List[Hypothesis]:
+        # batch = Batch([example])
+        # src_tensor = batch.get_src_tensor(self.src_vocab, self.device)
+        # src_lens = batch.get_src_lens()
+        # src_encodings, src_last_state, src_last_cell = self.encoder(src_tensor, src_lens)
+        src_encodings, src_last_state, src_last_cell, src_lens = self.get_encoder_output(example)
         hypos = self.decoder.beam_search(example, beam_size, max_dec_step, BeamClass,
                                          src_encodings, src_lens, src_last_state, src_last_cell)
         return hypos
+
+
+    def rencos(self, example: Example, example_0: Example, example_1: Example, beam_size: int, max_dec_step: int,
+                    BeamClass=Beam) -> List[Hypothesis]:
+        src_encodings, src_last_state, src_last_cell, src_lens = self.get_encoder_output(example)
+        src_encodings_0, src_last_state_0, src_last_cell_0, src_lens_0 = self.get_encoder_output(example_0)
+        src_encodings_1, src_last_state_1, src_last_cell_1, src_lens_1 = self.get_encoder_output(example_1)
+        # hypos = self.decoder.rencos_beam_search(example)
+        # todo need example?
+        pass
 
     def _get_sent_masks(self, max_len: int, sent_lens: List[int]):
         src_sent_masks = torch.zeros(len(sent_lens), max_len, dtype=FLOAT_TYPE)

@@ -186,7 +186,56 @@ class Decoder(nn.Module, ABC):
             att_t, alpha_t, state_t, cell_t, decoder_output = self.step(y_tm1_embed, att_tm1, *cur_static_input, last_state, last_cell)
             prob_input = self.prepare_prob_input(decoder_output)
             words_log_prob = self.cal_words_log_prob(*prob_input)
-            (state_t, att_t) = beam.step(words_log_prob, ((state_t.permute(1, 0, 2), cell_t.permute(1, 0, 2)), att_t.permute(1, 0, 2)))
+            beam.step(words_log_prob)
+            (state_t, att_t) = beam.expand_iter_input(((state_t.permute(1, 0, 2), cell_t.permute(1, 0, 2)), att_t.permute(1, 0, 2)))
             last_state, last_cell = state_t[0].permute(1, 0, 2), state_t[1].permute(1,0,2)
             att_tm1 = att_t.permute(1, 0, 2)
+        return beam.get_final_hypos()
+
+    def rencos_beam_search(self, example: Example, beam_size: int, max_dec_step: int, BeamClass, src_encodings, src_lens, last_state, last_cell,
+                           src_encodings_0, src_lens_0, last_state_0, last_cell_0, src_encodings_1, src_lens_1, last_state_1, last_cell_1,
+                           prs_0: List, prs_1: List, _lambda):
+        beam = BeamClass(self.vocab, self.device, beam_size, example.src_tokens)
+        cur_step = 0
+        att_tm1 = torch.zeros(1, 1, self.hidden_size, device=self.device)
+        att_tm1_0 = torch.zeros(1, 1, self.hidden_size, device=self.device)
+        att_tm1_1 = torch.zeros(1, 1, self.hidden_size, device=self.device)
+
+        src_lens = torch.tensor(src_lens, dtype=torch.int).to(self.device)
+        src_lens_0 = torch.tensor(src_lens_0, dtype=torch.int).to(self.device)
+        src_lens_1 = torch.tensor(src_lens_1, dtype=torch.int).to(self.device)
+        while (not beam.is_finished) and cur_step < max_dec_step:
+            y_tm1 = beam.next_y_tm1()
+            y_tm1_embed = self.embed_layer(y_tm1).permute(1, 0, 2)
+
+            cur_static_input = beam.expand_static_input((src_encodings, src_lens))
+            cur_static_input_0 = beam.expand_static_input((src_encodings_0, src_lens_0))
+            cur_static_input_1 = beam.expand_static_input((src_encodings_1, src_lens_1))
+
+            att_t, alpha_t, state_t, cell_t, decoder_output = self.step(y_tm1_embed, att_tm1, *cur_static_input, last_state, last_cell)
+            att_t_0, alpha_t_0, state_t_0, cell_t_0, decoder_output_0 = self.step(y_tm1_embed, att_tm1_0, *cur_static_input_0, last_state_0, last_cell_0)
+            att_t_1, alpha_t_1, state_t_1, cell_t_1, decoder_output_1 = self.step(y_tm1_embed, att_tm1_1, *cur_static_input_1, last_state_1, last_cell_1)
+            prob_input = self.prepare_prob_input(decoder_output)
+            prob_input_0 = self.prepare_prob_input(decoder_output_0)
+            prob_input_1 = self.prepare_prob_input(decoder_output_1)
+
+            words_log_prob = self.cal_words_log_prob(*prob_input)
+            words_log_prob_0 = self.cal_words_log_prob(*prob_input_0)
+            words_log_prob_1 = self.cal_words_log_prob(*prob_input_1)
+
+            _words_log_prob = words_log_prob + _lambda * prs_0[cur_step] * words_log_prob_0 + _lambda * prs_1[cur_step] * words_log_prob_1
+            beam.step(_words_log_prob)
+
+            (state_t, att_t) = beam.expand_iter_input(((state_t.permute(1, 0, 2), cell_t.permute(1, 0, 2)), att_t.permute(1, 0, 2)))
+            last_state, last_cell = state_t[0].permute(1, 0, 2), state_t[1].permute(1,0,2)
+            att_tm1 = att_t.permute(1, 0, 2)
+
+            (state_t_0, att_t_0) = beam.expand_iter_input(((state_t_0.permute(1, 0, 2), cell_t_0.permute(1, 0, 2)), att_t_0.permute(1, 0, 2)))
+            last_state_0, last_cell_0 = state_t_0[0].permute(1, 0, 2), state_t_0[1].permute(1,0,2)
+            att_tm1_0 = att_t_0.permute(1, 0, 2)
+
+            (state_t_1, att_t_1) = beam.expand_iter_input(((state_t_1.permute(1, 0, 2), cell_t_1.permute(1, 0, 2)), att_t_1.permute(1, 0, 2)))
+            last_state_1, last_cell_1 = state_t_1[0].permute(1, 0, 2), state_t_1[1].permute(1,0,2)
+            att_tm1_1 = att_t_1.permute(1, 0, 2)
+            cur_step += 1
         return beam.get_final_hypos()
