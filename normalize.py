@@ -15,7 +15,7 @@ def modify_scores(filename, num, length=10000):
 
 if __name__ == '__main__':
     lang = sys.argv[1]
-    root = 'samples/%s' % lang
+    root = '../samples/%s' % lang
     src_len = 0
     if lang == 'python':
         src_len = 100

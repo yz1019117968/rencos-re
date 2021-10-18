@@ -8,6 +8,7 @@
 Usage:
   semantic.py [options] MODEL_PATH VOCAB_FILE TRAIN_SET_SRC TRAIN_SET_TGT
   TEST_SET_SRC TEST_SET_TGT QUERY_OUT_PATH SOURCE_OUT_PATH SIMI_ID_OUT
+  TEST_REF_SRC_1 TEST_REF_TGT_1
 
 Options:
     -h --help                 show this screen.
@@ -23,7 +24,6 @@ Options:
 from modules.Encoder import Encoder
 from docopt import docopt
 from vocab import Vocab
-from typing import Tuple
 from torch import nn
 from modules.utils.common import *
 from train import Procedure
@@ -103,12 +103,34 @@ class Retriever(Procedure):
             pkl.dump(mp_lst, fw)
 
     def save_src_tgt(self):
+        """
+        save the retrieved sources and summaries.
+        :return:
+        """
         with open(self._args['SIMI_ID_OUT'], "rb") as fr:
             file = pkl.load(fr)
-        for id, i in enumerate(file):
-            print(i)
-            if id >=5:
-                break
+        train_set = Dataset.create_from_file(self._args['TRAIN_SET_SRC'], self._args['TRAIN_SET_TGT'],
+                                             self._args['--src-max-len'], self._args['--tgt-max-len'])
+        source = []
+        summary = []
+        for item in file:
+            train_file = item['source_file']
+            idt = item['source_id']
+
+            source_file_id = int(train_file.split(".")[-1])
+            if source_file_id % 4000 != 0:
+                source_id = int(source_file_id / 4000) * 4000 + idt + 1
+            else:
+                source_id = source_file_id - 4000 + idt + 1
+            source.append(" ".join(train_set[source_id].src_tokens))
+            summary.append(" ".join(train_set[source_id].tgt_desc_tokens))
+
+        with open(self._args['TEST_REF_SRC_1'], "w", encoding="utf-8") as fw:
+            for line in source:
+                fw.write(line+'\n')
+        with open(self._args['TEST_REF_TGT_1'], "w", encoding="utf-8") as fw:
+            for line in summary:
+                fw.write(line+'\n')
 
     def save_vecs(self):
         """
@@ -151,14 +173,21 @@ def main():
     args = docopt(__doc__)
     print(args)
     retriever = Retriever(args)
+
     if len(glob.glob(args['QUERY_OUT_PATH']+".*")) == 0 and \
         len(glob.glob(args['SOURCE_OUT_PATH']+".*")) == 0:
         print("start to save encoded vectors for train and test set...")
         retriever.save_vecs()
-    if len(glob.glob(args['SIMI_ID_OUT'])) == 0:
+
+    if not os.path.exists(args['SIMI_ID_OUT']):
         print("start to save the records of retrieved code...")
         retriever.retrieve()
-    retriever.save_src_tgt()
+
+    if not os.path.exists(args['TEST_REF_SRC_1']) and not os.path.exists(args['TEST_REF_TGT_1']):
+        print("start to save sources and summaries...")
+        retriever.save_src_tgt()
+
+    print("Done!")
 
 if __name__ == "__main__":
     main()
