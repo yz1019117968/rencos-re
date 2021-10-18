@@ -95,13 +95,15 @@ class Seq2Seq(base.BaseModel, ABC):
 
 
     def rencos(self, example: Example, example_0: Example, example_1: Example, beam_size: int, max_dec_step: int,
-                    BeamClass=Beam) -> List[Hypothesis]:
+                    prs_0: List, prs_1: List, _lambda: float, BeamClass=Beam) -> List[Hypothesis]:
         src_encodings, src_last_state, src_last_cell, src_lens = self.get_encoder_output(example)
         src_encodings_0, src_last_state_0, src_last_cell_0, src_lens_0 = self.get_encoder_output(example_0)
         src_encodings_1, src_last_state_1, src_last_cell_1, src_lens_1 = self.get_encoder_output(example_1)
-        # hypos = self.decoder.rencos_beam_search(example)
-        # todo need example?
-        pass
+        hypos = self.decoder.rencos_beam_search(beam_size, max_dec_step, BeamClass, src_encodings, src_last_state, src_last_cell, src_lens,
+                                                src_encodings_0, src_last_state_0, src_last_cell_0, src_lens_0,
+                                                src_encodings_1, src_last_state_1, src_last_cell_1, src_lens_1, prs_0, prs_1, _lambda)
+        return hypos
+
 
     def _get_sent_masks(self, max_len: int, sent_lens: List[int]):
         src_sent_masks = torch.zeros(len(sent_lens), max_len, dtype=FLOAT_TYPE)

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
-# file name: rencos_final.py
+# file name: infer_rencos.py
 # file description:
-# created at:15/10/2021 4:42 PM
-
+# created at:17/10/2021 11:00 AM
 

@@ -10,6 +10,10 @@ Usage:
 
 Options:
     -h --help                   show this screen.
+    --test-ref-src-0 FILE       test.ref.src.0
+    --test-ref-src-1 FILE       test.ref.src.1
+    --ref-0-tgt FILE            ast.out
+    --ref-1-tgt FILE
     --src-max-len INT           max length of src [default: 100]
     --tgt-max-len INT           max length of tgt [default: 50]
     --cuda INT                  use GPU [default: true]
@@ -89,20 +93,11 @@ class Infer(Procedure):
                 fw.write('\n\n')
         return hypos
 
-    def infer_one(self, code_change_seq: List[List[str]], src_desc_tokens: List[str],
-                  ExampleClass: Callable = Example):
-        self._init_model()
-        example = ExampleClass.create_partial_example({
-            'code_change_seq': code_change_seq,
-            'src_desc_tokens': src_desc_tokens,
-        })
-        test_set = Dataset([example])
-        self._init_model()
-        hypos = self.beam_search(test_set)
-        dst_desc_tokens = hypos[0][0][0]
-        with open(self._args['OUTPUT_FILE'], 'w') as f:
-            json.dump(hypos, f)
-        return dst_desc_tokens
+
+    def infer_rencos(self):
+        test_set = Dataset.create_from_file(self._args['TEST_SET_SRC'], self._args['TEST_SET_TGT'],
+                                            self._args['--src-max-len'], self._args['--tgt-max-len'])
+
 
 
 def infer(args):

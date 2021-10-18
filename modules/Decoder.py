@@ -192,10 +192,10 @@ class Decoder(nn.Module, ABC):
             att_tm1 = att_t.permute(1, 0, 2)
         return beam.get_final_hypos()
 
-    def rencos_beam_search(self, example: Example, beam_size: int, max_dec_step: int, BeamClass, src_encodings, src_lens, last_state, last_cell,
+    def rencos_beam_search(self, beam_size: int, max_dec_step: int, BeamClass, src_encodings, src_lens, last_state, last_cell,
                            src_encodings_0, src_lens_0, last_state_0, last_cell_0, src_encodings_1, src_lens_1, last_state_1, last_cell_1,
                            prs_0: List, prs_1: List, _lambda):
-        beam = BeamClass(self.vocab, self.device, beam_size, example.src_tokens)
+        beam = BeamClass(self.vocab, self.device, beam_size)
         cur_step = 0
         att_tm1 = torch.zeros(1, 1, self.hidden_size, device=self.device)
         att_tm1_0 = torch.zeros(1, 1, self.hidden_size, device=self.device)

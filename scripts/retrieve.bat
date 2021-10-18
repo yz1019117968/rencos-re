@@ -9,7 +9,7 @@ set query_out_path=../samples/python/test/test.vec.pkl
 set source_out_path=../samples/python/train/train.vec.pkl
 set simi_id_out=../samples/python/test/id_score
 
-python syntax python
+rem python syntax python
 
 python ../semantic.py %model_path% %vocab_file% %train_set_src% %train_set_tgt% %test_set_src% %test_set_tgt% ^
                       %query_out_path% %source_out_path% %simi_id_out%

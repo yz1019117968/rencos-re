@@ -82,7 +82,7 @@ class BaseBeam(AbstractBeam, ABC):
 
 
 class Beam(BaseBeam):
-    def __init__(self, vocab: BaseVocabEntry, device: torch.device, beam_size: int, *args, **kwargs):
+    def __init__(self, vocab: BaseVocabEntry, device: torch.device, beam_size: int):
         super().__init__()
         self.vocab = vocab
         self.device = device

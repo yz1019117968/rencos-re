@@ -31,6 +31,9 @@ from dataset import Dataset, Batch
 from tqdm import tqdm
 import pickle as pkl
 import os
+from multiprocessing import Pool
+from sklearn.metrics.pairwise import cosine_similarity
+import multiprocessing as mp
 
 class Retriever(Procedure):
 
@@ -57,41 +60,55 @@ class Retriever(Procedure):
         self._model.load_state_dict(new_params)
         del self.vocab, trained_params, new_params, init_params
 
+    def sub_retrieve(self, train_vec_files, train_stop_word, test_vec, test_file, ids, mg_lst):
+        best = {"query_file":"", "query_id": -1, "source_file":"", "source_id": -1, "simi_score": -1}
+        for train_file in train_vec_files:
+            with open(self._args['SOURCE_OUT_PATH'][: train_stop_word] + train_file, "rb") as fr:
+                train_vecs = pkl.load(fr)
+            for idt, train_vec in enumerate(train_vecs):
+                cur_score = round(cosine_similarity(test_vec, train_vec)[0][0], 2)
+                if float(cur_score) > float(best['simi_score']):
+                    best['query_file'] = test_file
+                    best['query_id'] = ids
+                    best['source_file'] = train_file
+                    best['source_id'] = idt
+                    best['simi_score'] = cur_score
+        print("query {} completed!".format(ids))
+        mg_lst.append(best)
+
     def retrieve(self):
         """
-        retrieve the most similar code based on code semantics, then save the id and score first,
-        then todo: save source code and corresponding summaries.
-        :param args:
+        retrieve the most similar code based on code semantics,
+        then save their locations in order.
         :return:
         """
+
         test_stop_word = [i for i in re.finditer("/", self._args['QUERY_OUT_PATH'])][-1].span()[1]
         test_vec_files = [file for file in os.listdir(self._args['QUERY_OUT_PATH'][: test_stop_word]) if file.startswith("test.vec.pkl.")]
         train_stop_word = [i for i in re.finditer("/", self._args['SOURCE_OUT_PATH'])][-1].span()[1]
         train_vec_files = [file for file in os.listdir(self._args['SOURCE_OUT_PATH'][: train_stop_word]) if file.startswith("train.vec.pkl.")]
 
-        cos = nn.CosineSimilarity(1, 1e-6)
-        simi_ids = []
+        mp_lst = mp.Manager().list()
         for test_file in test_vec_files:
             with open(self._args['QUERY_OUT_PATH'][: test_stop_word] + test_file, "rb") as fr:
                 test_vecs = pkl.load(fr)
+            p = Pool()
             for ids, test_vec in enumerate(test_vecs):
-                # ((filename, id), score)
-                best_score = (("", -1), -1)
-                for train_file in train_vec_files:
-                    with open(self._args['SOURCE_OUT_PATH'][: train_stop_word] + train_file, "rb") as fr:
-                        train_vecs = pkl.load(fr)
-                    for idt, train_vec in enumerate(train_vecs):
-                        cur_score = cos(test_vec, train_vec)
-                        if cur_score > best_score[1]:
-                            best_score = ((train_file, idt), cur_score)
-                print("query {} completed!".format(ids))
-                simi_ids.append(best_score)
+                p.apply_async(self.sub_retrieve, args=(train_vec_files, train_stop_word, test_vec, test_file, ids, mp_lst,))
+            p.close()
+            p.join()
+        # sort
+        mp_lst = sorted(mp_lst,key = lambda e:(float(e['query_file'].split(".")[-1]),int(e['query_id'])))
+        with open(self._args['SIMI_ID_OUT'], "wb") as fw:
+            pkl.dump(mp_lst, fw)
 
-        with open(self._args['SIMI_ID_OUT'], "wb", encoding="utf=8") as fw:
-            pkl.dump(simi_ids, fw)
-
-
-
+    def save_src_tgt(self):
+        with open(self._args['SIMI_ID_OUT'], "rb") as fr:
+            file = pkl.load(fr)
+        for id, i in enumerate(file):
+            print(i)
+            if id >=5:
+                break
 
     def save_vecs(self):
         """
@@ -106,7 +123,7 @@ class Retriever(Procedure):
     def save_vec(self, data_set, out_path):
         vec_list = []
         for id, example in enumerate(tqdm(data_set)):
-            vec = self.extract(example)
+            vec = self.extract(example).squeeze(2).cpu().detach().numpy()
             vec_list.append(vec)
             if id != 0 and id % 4000 == 0 or id == len(data_set) - 1:
                 with open(out_path+"."+str(id), "wb") as fw:
@@ -129,16 +146,19 @@ class Retriever(Procedure):
         r_c = pool(src_encodings.permute(0, 2, 1))
         return r_c
 
-    def compare(self):
-        pass
-
 def main():
+    import glob
     args = docopt(__doc__)
     print(args)
     retriever = Retriever(args)
-    # retriever.save_vecs()
-    retriever.retrieve()
-
+    if len(glob.glob(args['QUERY_OUT_PATH']+".*")) == 0 and \
+        len(glob.glob(args['SOURCE_OUT_PATH']+".*")) == 0:
+        print("start to save encoded vectors for train and test set...")
+        retriever.save_vecs()
+    if len(glob.glob(args['SIMI_ID_OUT'])) == 0:
+        print("start to save the records of retrieved code...")
+        retriever.retrieve()
+    retriever.save_src_tgt()
 
 if __name__ == "__main__":
     main()
