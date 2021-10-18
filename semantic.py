@@ -174,7 +174,7 @@ def main():
     print(args)
     retriever = Retriever(args)
 
-    if len(glob.glob(args['QUERY_OUT_PATH']+".*")) == 0 and \
+    if len(glob.glob(args['QUERY_OUT_PATH']+".*")) == 0 or \
         len(glob.glob(args['SOURCE_OUT_PATH']+".*")) == 0:
         print("start to save encoded vectors for train and test set...")
         retriever.save_vecs()
@@ -183,7 +183,7 @@ def main():
         print("start to save the records of retrieved code...")
         retriever.retrieve()
 
-    if not os.path.exists(args['TEST_REF_SRC_1']) and not os.path.exists(args['TEST_REF_TGT_1']):
+    if not os.path.exists(args['TEST_REF_SRC_1']) or not os.path.exists(args['TEST_REF_TGT_1']):
         print("start to save sources and summaries...")
         retriever.save_src_tgt()
 
