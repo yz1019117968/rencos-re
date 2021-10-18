@@ -133,6 +133,7 @@ class Beam(BaseBeam):
             new_hypo_ids.append(hypo_id)
         self.live_hypo_sents = new_hypo_sents
         self.live_hypo_scores = torch.tensor(new_hypo_scores, dtype=torch.float64, device=self.device)
+        return new_hypo_ids
         # update the states
         # new_state = []
         # for s in state_tm1:

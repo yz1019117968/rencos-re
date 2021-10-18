@@ -89,6 +89,7 @@ class Decoder(nn.Module, ABC):
             x = torch.cat([y_tm1_embed, att_tm1], dim=-1)
         else:
             x = torch.cat([y_tm1_embed], dim=-1)
+
         out_vec, (last_state, last_cell) = self.rnn_layer(x, (last_state, last_cell))
         # for each variable, remember to put in on gpu
         att_t, alpha_t = self.attention(
@@ -186,8 +187,8 @@ class Decoder(nn.Module, ABC):
             att_t, alpha_t, state_t, cell_t, decoder_output = self.step(y_tm1_embed, att_tm1, *cur_static_input, last_state, last_cell)
             prob_input = self.prepare_prob_input(decoder_output)
             words_log_prob = self.cal_words_log_prob(*prob_input)
-            beam.step(words_log_prob)
-            (state_t, att_t) = beam.expand_iter_input(((state_t.permute(1, 0, 2), cell_t.permute(1, 0, 2)), att_t.permute(1, 0, 2)))
+            new_hypo_ids = beam.step(words_log_prob)
+            (state_t, att_t) = beam.expand_iter_input(((state_t.permute(1, 0, 2), cell_t.permute(1, 0, 2)), att_t.permute(1, 0, 2)), new_hypo_ids)
             last_state, last_cell = state_t[0].permute(1, 0, 2), state_t[1].permute(1,0,2)
             att_tm1 = att_t.permute(1, 0, 2)
         return beam.get_final_hypos()
@@ -224,17 +225,17 @@ class Decoder(nn.Module, ABC):
             words_log_prob_1 = self.cal_words_log_prob(*prob_input_1)
 
             _words_log_prob = words_log_prob + _lambda * prs_0[cur_step] * words_log_prob_0 + _lambda * prs_1[cur_step] * words_log_prob_1
-            beam.step(_words_log_prob)
+            new_hypo_ids = beam.step(_words_log_prob)
 
-            (state_t, att_t) = beam.expand_iter_input(((state_t.permute(1, 0, 2), cell_t.permute(1, 0, 2)), att_t.permute(1, 0, 2)))
+            (state_t, att_t) = beam.expand_iter_input(((state_t.permute(1, 0, 2), cell_t.permute(1, 0, 2)), att_t.permute(1, 0, 2)), new_hypo_ids)
             last_state, last_cell = state_t[0].permute(1, 0, 2), state_t[1].permute(1,0,2)
             att_tm1 = att_t.permute(1, 0, 2)
 
-            (state_t_0, att_t_0) = beam.expand_iter_input(((state_t_0.permute(1, 0, 2), cell_t_0.permute(1, 0, 2)), att_t_0.permute(1, 0, 2)))
+            (state_t_0, att_t_0) = beam.expand_iter_input(((state_t_0.permute(1, 0, 2), cell_t_0.permute(1, 0, 2)), att_t_0.permute(1, 0, 2)), new_hypo_ids)
             last_state_0, last_cell_0 = state_t_0[0].permute(1, 0, 2), state_t_0[1].permute(1,0,2)
             att_tm1_0 = att_t_0.permute(1, 0, 2)
 
-            (state_t_1, att_t_1) = beam.expand_iter_input(((state_t_1.permute(1, 0, 2), cell_t_1.permute(1, 0, 2)), att_t_1.permute(1, 0, 2)))
+            (state_t_1, att_t_1) = beam.expand_iter_input(((state_t_1.permute(1, 0, 2), cell_t_1.permute(1, 0, 2)), att_t_1.permute(1, 0, 2)), new_hypo_ids)
             last_state_1, last_cell_1 = state_t_1[0].permute(1, 0, 2), state_t_1[1].permute(1,0,2)
             att_tm1_1 = att_t_1.permute(1, 0, 2)
             cur_step += 1

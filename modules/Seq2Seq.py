@@ -99,9 +99,9 @@ class Seq2Seq(base.BaseModel, ABC):
         src_encodings, src_last_state, src_last_cell, src_lens = self.get_encoder_output(example)
         src_encodings_0, src_last_state_0, src_last_cell_0, src_lens_0 = self.get_encoder_output(example_0)
         src_encodings_1, src_last_state_1, src_last_cell_1, src_lens_1 = self.get_encoder_output(example_1)
-        hypos = self.decoder.rencos_beam_search(beam_size, max_dec_step, BeamClass, src_encodings, src_last_state, src_last_cell, src_lens,
-                                                src_encodings_0, src_last_state_0, src_last_cell_0, src_lens_0,
-                                                src_encodings_1, src_last_state_1, src_last_cell_1, src_lens_1, prs_0, prs_1, _lambda)
+        hypos = self.decoder.rencos_beam_search(beam_size, max_dec_step, BeamClass, src_encodings, src_lens, src_last_state, src_last_cell,
+                                                src_encodings_0, src_lens_0, src_last_state_0, src_last_cell_0,
+                                                src_encodings_1, src_lens_1, src_last_state_1, src_last_cell_1, prs_0, prs_1, _lambda)
         return hypos
 
 

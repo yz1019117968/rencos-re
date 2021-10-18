@@ -31,7 +31,6 @@ class BaseModel(nn.Module, ABC):
     @classmethod
     def load(cls, model_path: str):
         params = torch.load(model_path, map_location=lambda storage, loc: storage)
-        print("TYPE: ", type(params))
         args = params['args']
         model = cls(*args)
         model.load_state_dict(params['state_dict'])

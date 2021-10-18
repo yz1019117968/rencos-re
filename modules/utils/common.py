@@ -53,5 +53,4 @@ def get_attr_by_name(class_name: str):
     assert len(class_tokens) > 1
     module_name = ".".join(class_tokens[:-1])
     module = importlib.import_module(module_name)
-    print("module: ", module)
     return getattr(module, class_tokens[-1])
