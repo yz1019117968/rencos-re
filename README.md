@@ -42,6 +42,16 @@ retrieve.bat
 cd scripts
 normalize.bat
 ```
+- Infer for rencos
+```cmd
+cd scripts
+infer_rencos.bat
+```
+- Evaluate for rencos
+```cmd
+cd scripts
+eval_rencos.bat
+```
 
 
 
