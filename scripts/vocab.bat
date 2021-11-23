@@ -1,3 +1,4 @@
-python ../vocab.py ../samples/python/train/train.spl.src ^
-         ../samples/python/train/train.txt.tgt ^
-         ../samples/python/dic/python_dic.json
+set lang=smart_contracts
+python ../vocab.py ../samples/%lang%/train/train.spl.src ^
+         ../samples/%lang%/train/train.txt.tgt ^
+         ../samples/%lang%/dic/%lang%_dic.json

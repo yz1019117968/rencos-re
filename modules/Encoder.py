@@ -7,7 +7,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 import torch
-from torch import nn, Tensor
+from torch import nn, Tensor, cat
 from modules.base import LSTM
 
 
@@ -27,8 +27,9 @@ class Encoder(BaseEncoder):
         super(Encoder, self).__init__()
         self.embed_size = embed_size
         self.hidden_size = hidden_size
+        self.num_layers = num_layers
         self.embed_layer = embed_layer
-        self.rnn_layer = LSTM(self.embed_size, self.hidden_size, num_layers, bidirectional=True, batch_first=False,
+        self.rnn_layer = LSTM(self.embed_size, self.hidden_size, self.num_layers, bidirectional=True, batch_first=False,
                               dropout=dropout_rate)
 
     @property
@@ -43,8 +44,8 @@ class Encoder(BaseEncoder):
         :param src_tensor: (src_sent_len， batch_size)
         :param src_lens:
         :return: (src_sent_len, batch_size, hidden_size*num_directions),
-                (num_layers*num_directions, batch_size, hidden_size),
-                 (num_layers*num_directions, batch_size, hidden_size)
+                (1, batch_size, hidden_size*num_directions),
+                 (1, batch_size, hidden_size*num_directions)
         """
         # (batch_size, sent_len, embed_size) -> (sent_len, batch_size, embed_size)
         # tell diff about view and permute
@@ -53,10 +54,14 @@ class Encoder(BaseEncoder):
         embeddings = embeddings.permute(1, 0, 2)
         encodings, (last_state, last_cell) = self.rnn_layer(embeddings, src_lens, enforce_sorted=False)
 
-        encodings = encodings.view(encodings.size(0), encodings.size(1), 2, self.hidden_size)
-        encodings = encodings.sum(2).permute(1, 0, 2)
-        last_state = last_state.sum(0).unsqueeze(0)
-        last_cell = last_cell.sum(0).unsqueeze(0)
+        # encodings = encodings.view(encodings.size(0), encodings.size(1), 2, self.hidden_size)
+        # encodings = encodings.sum(2).permute(1, 0, 2)
+        # last_state = last_state.sum(0).unsqueeze(0)
+        # last_cell = last_cell.sum(0).unsqueeze(0)
+        last_state = last_state.view(self.num_layers, 2, last_state.size(1), last_state.size(2))
+        last_state = cat([last_state[:,0,:,:], last_state[:,1,:,:]], dim=-1)
+        last_cell = last_cell.view(self.num_layers, 2, last_cell.size(1), last_cell.size(2))
+        last_cell = cat([last_cell[:,0,:,:], last_cell[:,1,:,:]], dim=-1)
         return encodings, last_state, last_cell
 
 if __name__ == "__main__":

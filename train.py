@@ -12,11 +12,11 @@ Usage:
 Options:
     -h --help                 show this screen.
     --cuda INT                use GPU [default: true]
-    --src-max-len INT         max length of src [default: 100]
-    --tgt-max-len INT         max length of tgt [default: 50]
+    --src-max-len INT         max length of src [default: 152]
+    --tgt-max-len INT         max length of tgt [default: 22]
     --model-class STR         model class [default: modules.Seq2Seq.Seq2Seq]
     --embed-size INT          embed size [default: 256]
-    --enc-hidden-size INT     encoder hidden size [default: 512]
+    --enc-hidden-size INT     encoder hidden size [default: 256]
     --dec-hidden-size INT     hidden size [default: 512]
     --num-layers INT          number of layers [default: 1]
     --input-feed BOOL         use input feeding [default: true]
@@ -24,8 +24,8 @@ Options:
     --attn-func STR           choose an attention function, e.g., softmax and sparsemax. [default: softmax]
     --seed INT                random seed [default: 0]
     --uniform-init FLOAT      uniform initialization of parameters [default: 0.1]
-    --train-batch-size INT    train batch size [default: 32]
-    --valid-batch-size INT    valid batch size [default: 32]
+    --train-batch-size INT    train batch size [default: 100]
+    --valid-batch-size INT    valid batch size [default: 100]
     --lr FLOAT                learning rate [default: 0.001]
     --dropout-rate FLOAT      dropout rate [default: 0.2]
     --teacher-forcing FLOAT   teacher forcing ratio [default: 1.0]
@@ -33,7 +33,6 @@ Options:
     --log-every INT           log interval [default: 100]
     --valid-niter INT         validate interval [default: 500]
     --patience INT            wait for how many validations to decay learning rate [default: 5]
-    --max-trial-num INT       terminal training after how many trials [default: 5]
     --lr-decay FLOAT          learning rate decay [default: 0.5]
     --max-epoch INT           max epoch [default: 50]
     --log-dir DIR             dir for tensorboard log [default: log/]
@@ -199,10 +198,6 @@ class Trainer(Procedure):
     @property
     def _max_patience(self):
         return int(self._args['--patience'])
-
-    @property
-    def _max_trial_num(self):
-        return int(self._args['--max-trial-num'])
 
     @property
     def _max_epoch(self):

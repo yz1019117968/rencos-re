@@ -93,7 +93,7 @@ class Decoder(nn.Module, ABC):
         out_vec, (last_state, last_cell) = self.rnn_layer(x, (last_state, last_cell))
         # for each variable, remember to put in on gpu
         att_t, alpha_t = self.attention(
-            last_state.permute(1, 0, 2), src_encodings,
+            last_state.permute(1, 0, 2), src_encodings.permute(1, 0, 2),
             src_lens
         )
         cat_final = torch.cat([y_tm1_embed, last_state, att_t], dim=-1)
@@ -122,18 +122,6 @@ class Decoder(nn.Module, ABC):
             tgt_in_embeddings = self.embed_layer(tgt_in_tensor).permute(1, 0, 2)
             # start from y_0=`<s>`, iterate until y_{T-1}
             for y_tm1_embed in tgt_in_embeddings.split(split_size=1, dim=0):
-                # if self.input_feed:
-                #     x = torch.cat([y_tm1_embed, att_tm1], dim=-1)
-                # else:
-                #     x = torch.cat([y_tm1_embed], dim=-1)
-                # out_vec, (last_state, last_cell) = self.rnn_layer(x, (last_state, last_cell))
-                # # for each variable, remember to put in on gpu
-                # att_t, alpha_t = self.attention(
-                #     last_state.permute(1, 0, 2), src_encodings,
-                #     torch.tensor(src_lens, dtype=torch.int).to(self.device)
-                # )
-                # cat_final = torch.cat([y_tm1_embed, last_state, att_t], dim=-1)
-                # decoder_output = self.tanh(self.generator_function(cat_final))
                 att_tm1, alpha_t, last_state, last_cell, decoder_output = self.step(y_tm1_embed, att_tm1, src_encodings, src_lens, last_state, last_cell)
                 out_vecs.append(decoder_output)
                 att_maps.append(alpha_t)
