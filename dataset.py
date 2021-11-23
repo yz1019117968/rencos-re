@@ -65,43 +65,6 @@ class Example(AbstractExample):
     def tgt_words_num(self):
         return len(self.tgt_tokens) - 1
 
-# class TestExample(AbstractExample):
-#     def __init__(self, instance):
-#         self._sample_id = instance['sample_id']
-#         self._src_tokens = instance['src_tokens']
-#         self._src_tokens_0 = instance['src_tokens_0']
-#         self._src_tokens_1 = instance['src_tokens_1']
-#         self._tgt_tokens = instance['tgt_tokens']
-#
-#     # 只读属性
-#     @property
-#     def src_tokens(self):
-#         """
-#         used for models
-#         """
-#         return self._src_tokens
-#
-#     @property
-#     def src_tokens_0(self):
-#         """
-#         used for models
-#         """
-#         return self._src_tokens_0
-#
-#     @property
-#     def src_tokens_1(self):
-#         """
-#         used for models
-#         """
-#         return self._src_tokens_1
-#
-#     @property
-#     def tgt_tokens(self):
-#         """
-#         used for models
-#         """
-#         return [TGT_START] + self._tgt_tokens + [TGT_END]
-
 class Batch(object):
 
     def __init__(self, examples: List[Example]):
