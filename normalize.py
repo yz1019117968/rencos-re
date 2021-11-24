@@ -5,7 +5,7 @@ def modify_scores(filename, num, length=10000):
 
     sources = read_data('%s/test/test.spl.src'%root)
     refs = read_data('%s/test/'%root+filename)
-    with open('%s/test/prs.%d'%(root,num), 'w') as fw:
+    with open('%s/test/prs.%d'%(root,num), 'w', encoding="utf-8") as fw:
         for i, (s, r) in enumerate(zip(sources, refs)):
             print(i)
             s,r = ' '.join(s.split()[:length]),' '.join(r.split()[:length])
@@ -21,6 +21,8 @@ if __name__ == '__main__':
         src_len = 100
     elif lang == 'java':
         src_len = 300
+    elif lang == 'smart_contracts':
+        src_len = 152
     else:
         print("Wrong argument.")
         exit(-1)

@@ -57,7 +57,7 @@ eval_rencos.bat
 | Structure | S-BLEU| C-BLEU | ROUGE | METEOR | CIDER |
 | ---- | ---- | ---- | ---- | ---- | ---- |
 | NMT+Beam | 0.322598 | 0.352737 | 0.436517 | 0.470094 | 3.201473 |
-| NMT+IR+Beam | | | | | |
+| NMT+IR+Beam | 0.325910 | 0.355818 | 0.434394 | 0.463494 | 3.227261 |
 
 
 

@@ -163,14 +163,14 @@ def ranker(input_sentence, list_of_sentences, is_list):
 
 def read_data(filename):
     sentence_list = []
-    with open(filename, "r") as f:
+    with open(filename, "r", encoding="utf-8") as f:
         for line in f:
             sentence_list.append(line.strip())
     return sentence_list
 
 
 def write_data(data, filename):
-    with open(filename, "w") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         for item in data:
             f.write(item+'\n')
 
