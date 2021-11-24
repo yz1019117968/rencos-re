@@ -14,6 +14,7 @@ Options:
     --tgt-max-len INT           max length of tgt [default: 22]
     --metrics LIST              metrics to calculate [default: sent_bleu,corp_bleu,rouge,meteor,cider]
     --eval-class STR            the class used to evaluate [default: Evaluator]
+    --source STR                from "nmt" or "ir" [default: nmt]
 """
 
 import json
@@ -138,11 +139,15 @@ class Evaluator(BaseEvaluator):
         self.args = args
         self.metric_map = metric_map if metric_map else self.METRIC_MAP
 
-    def load_hypos(self) -> List[List[List[str]]]:
-        with open(self.args['RESULT_FILE'], 'r') as f:
-            results = json.load(f)
-        return self.load_hypos_raw(results)
-
+    def load_hypos(self, source) -> List[List[List[str]]]:
+        if source == "nmt":
+            with open(self.args['RESULT_FILE'], 'r') as f:
+                results = json.load(f)
+            return self.load_hypos_raw(results)
+        elif source == "ir":
+            with open(self.args['RESULT_FILE'], 'r') as f:
+                results = f.readlines()
+            return [[ret.split()] for ret in results]
     def load_hypos_raw(self, results) -> List[List[List[str]]]:
         # only use the first hypo
         assert type(results[0][0][0]) == list and type(results[0][0][1] == float), \
@@ -152,11 +157,11 @@ class Evaluator(BaseEvaluator):
         hypos = [[hypo[0] for hypo in r] for r in results]
         return hypos
 
-    def load_hypos_and_refs(self):
+    def load_hypos_and_refs(self, source):
         test_set = Dataset.create_from_file(self.args['TEST_SET_SRC'], self.args['TEST_SET_TGT'],
                                             self.args['--src-max-len'], self.args['--tgt-max-len'])
         references = list(test_set.get_ground_truth())
-        hypos = self.load_hypos()
+        hypos = self.load_hypos(source)
         return hypos, references
 
     def cal_metrics(self, metrics: Iterable[str], hypos: List[List[List[str]]], references: List[List[str]]):
@@ -166,9 +171,9 @@ class Evaluator(BaseEvaluator):
             results[metric] = instance.eval(hypos, references)
         return results
 
-    def evaluate(self):
+    def evaluate(self, source):
         metrics = self.args['--metrics'].split(',')
-        hypos, references = self.load_hypos_and_refs()
+        hypos, references = self.load_hypos_and_refs(source)
         assert type(hypos[0][0]) == type(references[0])
         results = self.cal_metrics(metrics, hypos, references)
         logging.info(results)
@@ -178,7 +183,7 @@ class Evaluator(BaseEvaluator):
 def evaluate(args):
     EvalClass = globals()[args['--eval-class']]
     evaluator = EvalClass(args)
-    return evaluator.evaluate()
+    return evaluator.evaluate(args['--source'])
 
 
 def main():
