@@ -14,11 +14,11 @@ Options:
     -h --help                 show this screen.
     --cuda INT                use GPU [default: False]
     --embed-size INT          embed size [default: 256]
-    --enc-hidden-size INT     encoder hidden size [default: 512]
+    --enc-hidden-size INT     encoder hidden size [default: 256]
     --num-layers INT          number of layers [default: 1]
     --dropout-rate FLOAT      dropout rate [default: 0.2]
-    --src-max-len INT         max length of src [default: 100]
-    --tgt-max-len INT         max length of tgt [default: 50]
+    --src-max-len INT         max length of src [default: 152]
+    --tgt-max-len INT         max length of tgt [default: 22]
 """
 
 from modules.Encoder import Encoder
@@ -145,7 +145,7 @@ class Retriever(Procedure):
     def save_vec(self, data_set, out_path):
         vec_list = []
         for id, example in enumerate(tqdm(data_set)):
-            vec = self.extract(example).squeeze(2).cpu().detach().numpy()
+            vec = self.extract(example).cpu().detach().numpy()
             vec_list.append(vec)
             if id != 0 and id % 4000 == 0 or id == len(data_set) - 1:
                 with open(out_path+"."+str(id), "wb") as fw:
@@ -164,8 +164,12 @@ class Retriever(Procedure):
         src_tensor = batch.get_src_tensor(self.src_vocab, self._device)
         src_lens = batch.get_src_lens()
         src_encodings, _, _ = self._model(src_tensor, src_lens)
-        pool = nn.MaxPool1d(max(src_lens), 1)
-        r_c = pool(src_encodings.permute(0, 2, 1))
+        # src_encoding (src_len, batch_size, hidden_size) -> (batch_size, hidden_size, src_len)
+        src_encodings = src_encodings.permute(1, 2, 0)
+        # 对src_len做pooling, 此外pooling只作用于最后一个维度，必要时需要置换维度
+        pool = nn.MaxPool1d(max(src_lens))
+        # eliminate the last dim
+        r_c = pool(src_encodings).squeeze(2)
         return r_c
 
 def main():
@@ -173,7 +177,6 @@ def main():
     args = docopt(__doc__)
     print(args)
     retriever = Retriever(args)
-
     if len(glob.glob(args['QUERY_OUT_PATH']+".*")) == 0 or \
         len(glob.glob(args['SOURCE_OUT_PATH']+".*")) == 0:
         print("start to save encoded vectors for train and test set...")

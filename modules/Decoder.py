@@ -157,12 +157,12 @@ class Decoder(nn.Module, ABC):
 
         return word_losses, ys
 
-    def beam_search(self, example: Example, beam_size: int, max_dec_step: int, BeamClass,
+    def beam_search(self, beam_size: int, max_dec_step: int, BeamClass,
                     src_encodings, src_lens, last_state, last_cell) -> List[Hypothesis]:
         """
         NOTE: the batch size must be 1
         """
-        beam = BeamClass(self.vocab, self.device, beam_size, example.src_tokens)
+        beam = BeamClass(self.vocab, self.device, beam_size)
         cur_step = 0
         att_tm1 = torch.zeros(1, 1, self.hidden_size, device=self.device)
         src_lens = torch.tensor(src_lens, dtype=torch.int).to(self.device)
@@ -170,9 +170,9 @@ class Decoder(nn.Module, ABC):
             cur_step += 1
             y_tm1 = beam.next_y_tm1()
             y_tm1_embed = self.embed_layer(y_tm1).permute(1, 0, 2)
-            cur_static_input = beam.expand_static_input((src_encodings, src_lens))
+            _src_encodings, _src_lens = beam.expand_static_input((src_encodings.permute(1, 0, 2), src_lens))
             # assert False, "FALSE"
-            att_t, alpha_t, state_t, cell_t, decoder_output = self.step(y_tm1_embed, att_tm1, *cur_static_input, last_state, last_cell)
+            att_t, alpha_t, state_t, cell_t, decoder_output = self.step(y_tm1_embed, att_tm1, _src_encodings.permute(1, 0, 2), _src_lens, last_state, last_cell)
             prob_input = self.prepare_prob_input(decoder_output)
             words_log_prob = self.cal_words_log_prob(*prob_input)
             new_hypo_ids = beam.step(words_log_prob)

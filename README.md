@@ -53,5 +53,11 @@ cd scripts
 eval_rencos.bat
 ```
 
+### Results for smart contracts
+| Structure | S-BLEU| C-BLEU | ROUGE | METEOR | CIDER |
+| ---- | ---- | ---- | ---- | ---- | ---- |
+| NMT+Beam | 0.322598 | 0.352737 | 0.436517 | 0.470094 | 3.201473 |
+| NMT+IR+Beam | | | | | |
+
 
 

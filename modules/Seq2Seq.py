@@ -89,7 +89,7 @@ class Seq2Seq(base.BaseModel, ABC):
         # src_lens = batch.get_src_lens()
         # src_encodings, src_last_state, src_last_cell = self.encoder(src_tensor, src_lens)
         src_encodings, src_last_state, src_last_cell, src_lens = self.get_encoder_output(example)
-        hypos = self.decoder.beam_search(example, beam_size, max_dec_step, BeamClass,
+        hypos = self.decoder.beam_search(beam_size, max_dec_step, BeamClass,
                                          src_encodings, src_lens, src_last_state, src_last_cell)
         return hypos
 

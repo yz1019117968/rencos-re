@@ -10,8 +10,8 @@ Usage:
 
 Options:
     -h --help                   show this screen.
-    --src-max-len INT           max length of src [default: 100]
-    --tgt-max-len INT           max length of tgt [default: 50]
+    --src-max-len INT           max length of src [default: 152]
+    --tgt-max-len INT           max length of tgt [default: 22]
     --metrics LIST              metrics to calculate [default: sent_bleu,corp_bleu,rouge,meteor,cider]
     --eval-class STR            the class used to evaluate [default: Evaluator]
 """

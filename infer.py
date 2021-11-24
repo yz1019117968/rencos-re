@@ -14,10 +14,10 @@ Options:
     --rencos BOOL               whether execute the infer for rencos [default: False]
     --test-ref-src-0 FILE       test.ref.src.0 [default: ./test.ref.src.0]
     --test-ref-src-1 FILE       test.ref.src.1 [default: ./test.ref.src.1]
-    --test-ref-tgt-0 FILE       ast.out [default: ./ast.out]
+    --test-ref-tgt-0 FILE       ast.out [default: ./test.ref.tgt.0]
     --test-ref-tgt-1 FILE       test.ref.tgt.1 [default: ./test.ref.tgt.1]
-    --src-max-len INT           max length of src [default: 100]
-    --tgt-max-len INT           max length of tgt [default: 50]
+    --src-max-len INT           max length of src [default: 152]
+    --tgt-max-len INT           max length of tgt [default: 22]
     --prs-0 FILE                sim(c_test, c_ref_0) [default: ./prs.0]
     --prs-1 FILE                sim(c_test, c_ref_1) [default: ./prs.1]
     --lambda INT                _lambda [default: 3]
@@ -157,7 +157,7 @@ def infer(args):
         set_reproducibility(seed)
 
     infer_instance = Infer(args)
-    if not args['--rencos']:
+    if args['--rencos'] == "False":
         infer_instance.infer()
     else:
         infer_instance.infer_rencos()

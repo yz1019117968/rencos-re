@@ -42,7 +42,7 @@ def build_index(file_dir):
     if writer.numDocs():
         print("Index already built.")
         return
-    with open(file_dir+"/train/train.ast.src") as fc:
+    with open(file_dir+"/train/train.ast.src", encoding="utf-8") as fc:
         # 读入全部文本
         codes = [re.sub("[\W\s]+|AND|NOT|OR", ' ', line.strip()) for line in fc.readlines()]
 
@@ -82,7 +82,7 @@ def retriever(file_dir):
         summaries = [line.strip() for line in fsu.readlines()]
     # test.ref.src.0: for storing retrieved source code; ast.out: for storing retrieved summaries.
     with open(file_dir+"/test/test.ast.src", encoding="utf-8") as ft, open(file_dir+"/test/test.ref.src.0", 'w', encoding="utf-8") as fwo, \
-            open(file_dir+"/output/ast.out", 'w', encoding="utf-8") as fws:
+            open(file_dir+"/test/test.ref.tgt.0", 'w', encoding="utf-8") as fws:
         queries = [re.sub("[\W\s]+|AND|NOT|OR", ' ', line.strip()) for line in ft.readlines()]
 
         for i, line in enumerate(queries):
